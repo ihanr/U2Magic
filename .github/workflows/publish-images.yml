@@ -28,7 +28,7 @@ jobs:
             context: ./u2_scripts
           - image: u2magic-logs
             context: ./u2magic
-            dockerfile: ./u2magic/logs/Dockerfile
+            dockerfile: ./u2magic/log-image/Dockerfile
           - image: u2magic-gateway
             context: ./nginx
     steps:
