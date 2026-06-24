@@ -1,0 +1,11 @@
+aiohttp
+beautifulsoup4
+deluge-client
+loguru
+lxml
+pytz
+PyYAML
+qbittorrent-api
+requests
+transmission-rpc
+

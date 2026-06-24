@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>&#26085;&#24535;&#36755;&#20986;</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", "PingFang SC", "Helvetica Neue", sans-serif; }
+        body { background: #f5f7fa; color: #1f2937; padding: 20px; }
+        .nav { max-width: 1200px; margin: 0 auto 24px; display: flex; gap: 12px; background: #fff; padding: 16px 24px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+        .nav a { padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; transition: all 0.2s ease; }
+        .nav a.active { background: #409EFF; color: #fff; box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2); }
+        .nav a.normal { background: #f8f9fc; color: #374151; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.06); overflow: hidden; }
+        .toolbar { padding: 16px 20px; border-bottom: 1px solid #eef2f7; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .status { color: #6b7280; font-size: 13px; }
+        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        select, button { height: 36px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; padding: 0 12px; font-size: 14px; }
+        button { cursor: pointer; background: #409EFF; color: #fff; border-color: #409EFF; }
+        .summary { min-height: calc(100vh - 180px); max-height: calc(100vh - 180px); overflow: auto; padding: 18px 20px; background: #f9fafb; }
+        .event { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+        .event-title { font-weight: 600; margin-bottom: 10px; }
+        .event-body { color: #374151; font: 13px/1.6 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; }
+        pre { min-height: calc(100vh - 180px); max-height: calc(100vh - 180px); overflow: auto; padding: 18px 20px; background: #111827; color: #e5e7eb; font: 13px/1.55 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="nav">
+    <a href="addTorrent.html" class="active">&#26085;&#24535;</a>
+    <a href="index.html" id="configPage" class="normal">&#31995;&#32479;&#37197;&#32622;&#31649;&#29702;</a>
+</div>
+
+<div class="container">
+    <div class="toolbar">
+        <div class="status" id="status">&#21152;&#36733;&#26085;&#24535;&#20013;...</div>
+        <div class="controls">
+            <select id="lineCount">
+                <option value="300">&#26368;&#36817; 300 &#34892;</option>
+                <option value="800" selected>&#26368;&#36817; 800 &#34892;</option>
+                <option value="1500">&#26368;&#36817; 1500 &#34892;</option>
+                <option value="3000">&#26368;&#36817; 3000 &#34892;</option>
+            </select>
+            <select id="viewMode" onchange="renderCurrentLogs(true)">
+                <option value="summary" selected>&#25688;&#35201;</option>
+                <option value="raw">&#21407;&#22987;&#26085;&#24535;</option>
+            </select>
+            <button onclick="loadLogs(true)">&#21047;&#26032;</button>
+        </div>
+    </div>
+    <div class="summary" id="summaryOutput"></div>
+    <pre id="logOutput" class="hidden"></pre>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') || localStorage.getItem('qb_tool_token') || '';
+    let currentLogText = '';
+    document.getElementById('configPage').href = `index.html${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+
+    const zh = {
+        noLog: '\u6682\u65e0\u65e5\u5fd7',
+        loaded: '\u5df2\u52a0\u8f7d',
+        lines: '\u884c',
+        autoRefresh: '\u81ea\u52a8\u5237\u65b0',
+        logDown: '\u65e5\u5fd7\u670d\u52a1\u672a\u542f\u52a8\u6216\u4e0d\u53ef\u8bbf\u95ee',
+        cannotRead: '\u65e0\u6cd5\u8bfb\u53d6\u65e5\u5fd7\u670d\u52a1\uff1ahttp://127.0.0.1:18081/logs',
+        success: '\u6210\u529f\u4e0a\u8f66',
+        handled: '\u79cd\u5b50\u5904\u7406',
+        recentScan: '\u6700\u8fd1\u626b\u63cf',
+        errors: '\u9519\u8bef/\u5f02\u5e38',
+        status: '\u8fd0\u884c\u72b6\u6001',
+        none: '\u6682\u65e0\u65b0\u7684\u4e0a\u8f66\u8bb0\u5f55\u6216\u5f02\u5e38\u3002'
+    };
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+    }
+
+    function firstMatch(text, pattern) {
+        const match = text.match(pattern);
+        return match ? match[1] : '';
+    }
+
+    function findLine(lines, pattern) {
+        return lines.find(line => pattern.test(line)) || '';
+    }
+
+    function formatScore(value) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num.toFixed(4) : value;
+    }
+
+    function buildSummary(text) {
+        const lines = text.split('\n');
+        const events = [];
+        const starts = [];
+
+        lines.forEach((line, index) => {
+            if (line.includes('============================\u79cd\u5b50:') && line.includes('\u5f00\u59cb')) {
+                starts.push(index);
+            }
+        });
+
+        starts.forEach((start, eventIndex) => {
+            const end = starts[eventIndex + 1] || lines.length;
+            const blockLines = lines.slice(start, end);
+            const block = blockLines.join('\n');
+            const torrentId = firstMatch(block, /\u79cd\u5b50:(\d+)\u5f00\u59cb/) || firstMatch(block, /torrentId=(\d+)/);
+            const promotionId = firstMatch(block, /promotionId=(\d+)/);
+            const name = firstMatch(block, /torrentName=([^,\n]+)/);
+            const size = firstMatch(block, /torrentSizeShow=([^,\n)]+)/);
+            const seeders = firstMatch(block, /torrentSeeders=(\d+)/);
+            const ratio = firstMatch(block, /ratio=([^,\n)]+)/);
+            const expiration = firstMatch(block, /expirationTime=([^,\n)]+)/);
+            const selected = firstMatch(block, /\u81ea\u52a8\u9009\u62e9\u7684\u6700\u4f18\u8282\u70b9\u4e3a: ([^,\uff0c\n]+)/);
+            const addNode = firstMatch(block, /\u6dfb\u52a0\u79cd\u5b50\u5230QB\u3010([^\u3011]+)\u3011\u6210\u529f/);
+            const status = firstMatch(block, /\u6dfb\u52a0\u7ed3\u679c: \u72b6\u6001:(\d+)/);
+            const response = firstMatch(block, /\u54cd\u5e94\u7ed3\u679c:([^\n]+)/);
+            const skipped = findLine(blockLines, /\u4e0d\u6ee1\u8db3\u6761\u4ef6|\u8df3\u8fc7|\u5931\u8d25|\u5f02\u5e38|\u9519\u8bef/);
+
+            const nodeLines = blockLines
+                .filter(line => line.includes('\u6743\u91cd\u5f97\u5206'))
+                .map(line => {
+                    const node = firstMatch(line, /\u8282\u70b9:([^,]+)/);
+                    const space = firstMatch(line, /\u5269\u4f59\u7a7a\u95f4: ([^,]+)/);
+                    const speed = firstMatch(line, /\u4e0a\u4f20\u901f\u5ea6: ([^,]+)/);
+                    const score = firstMatch(line, /\u6743\u91cd\u5f97\u5206: ([^\s]+)/);
+                    return node ? `${node} \u5269\u4f59 ${space}\uff0c\u4e0a\u4f20 ${speed}\uff0c\u5f97\u5206 ${formatScore(score)}` : line.trim();
+                });
+
+            const skippedNodeLines = blockLines
+                .filter(line => /\u8282\u70b9 .*\u8df3\u8fc7|QB\u8282\u70b9.*\u5931\u8d25|\u767b\u5f55\u5931\u8d25|\u8d85\u8fc7.*\u9650\u5236|\u5269\u4f59.*\u4e0d\u8db3/.test(line))
+                .map(line => line.replace(/^.* - /, '').trim());
+
+            const details = [];
+            if (promotionId) details.push(`promotionId=${promotionId}`);
+            if (torrentId) details.push(`torrentId=${torrentId}`);
+            if (name) details.push(name);
+            if (size) details.push(`\u5927\u5c0f: ${size}`);
+            if (seeders) details.push(`\u505a\u79cd\u4eba\u6570: ${seeders}`);
+            if (ratio) details.push(`\u500d\u7387: ${ratio}`);
+            if (expiration) details.push(`\u6709\u6548\u671f\u81f3: ${expiration}`);
+            if (skipped && !addNode) details.push(`\u7ed3\u679c: ${skipped.trim()}`);
+            if (skippedNodeLines.length) details.push(`\u8282\u70b9\u8df3\u8fc7:\n${skippedNodeLines.join('\n')}`);
+            if (nodeLines.length) details.push(`\u8282\u70b9\u8bc4\u5206:\n${nodeLines.join('\n')}`);
+            if (selected) details.push(`\u6700\u7ec8\u9009\u62e9: ${selected}`);
+            if (addNode) details.push(`\u6dfb\u52a0\u7ed3\u679c: ${status || '-'} ${response || ''}`.trim());
+            if (addNode) details.push(`\u6dfb\u52a0\u79cd\u5b50\u5230 QB\u3010${addNode}\u3011\u6210\u529f`);
+
+            events.push({
+                title: addNode ? `${zh.success}\uff1a${torrentId || name || '\u65b0\u79cd\u5b50'}` : `${zh.handled}\uff1a${torrentId || name || '\u672a\u77e5'}`,
+                body: details.join('\n')
+            });
+        });
+
+        const scanLines = lines
+            .filter(line => line.includes('\u65e0\u65b0\u79cd\u5b50\uff0c\u672c\u6b21\u8df3\u8fc7') || line.includes('\u67e5\u8be2\u4e0d\u5230\u5386\u53f2promotionId'))
+            .slice(-5)
+            .map(line => line.replace(/^.*AutoAddSchedule - /, '').trim());
+
+        if (!events.length && scanLines.length) {
+            events.push({ title: zh.recentScan, body: scanLines.join('\n') });
+        }
+
+        const errors = lines
+            .filter(line => /ERROR|Exception|\u5931\u8d25|\u5f02\u5e38|\u9519\u8bef/.test(line))
+            .slice(-8)
+            .map(line => line.trim());
+
+        if (errors.length) {
+            events.push({ title: zh.errors, body: errors.join('\n') });
+        }
+
+        if (!events.length) {
+            events.push({ title: zh.status, body: zh.none });
+        }
+
+        return events.slice(-8).reverse();
+    }
+
+    function renderCurrentLogs(scrollToBottom = false) {
+        const output = document.getElementById('logOutput');
+        const summary = document.getElementById('summaryOutput');
+        const mode = document.getElementById('viewMode').value;
+        output.textContent = currentLogText || zh.noLog;
+        summary.innerHTML = buildSummary(currentLogText || '').map(event => `
+            <div class="event">
+                <div class="event-title">${escapeHtml(event.title)}</div>
+                <div class="event-body">${escapeHtml(event.body)}</div>
+            </div>
+        `).join('');
+        output.classList.toggle('hidden', mode !== 'raw');
+        summary.classList.toggle('hidden', mode !== 'summary');
+        if (scrollToBottom) {
+            output.scrollTop = output.scrollHeight;
+            summary.scrollTop = summary.scrollHeight;
+        }
+    }
+
+    async function loadLogs(scrollToBottom = false) {
+        const status = document.getElementById('status');
+        try {
+            const lines = document.getElementById('lineCount').value;
+            const res = await fetch(`/u2magic-logs?lines=${lines}&t=${Date.now()}`, {
+                credentials: 'include'
+            });
+            const data = await res.json();
+            currentLogText = data.text || '';
+            renderCurrentLogs(scrollToBottom);
+            status.textContent = `${zh.loaded} ${data.lines} ${zh.lines}\uff0c${new Date().toLocaleTimeString()} ${zh.autoRefresh}`;
+        } catch (e) {
+            status.textContent = zh.logDown;
+            currentLogText = `${zh.cannotRead.replace('127.0.0.1', location.hostname || '127.0.0.1')}`;
+            renderCurrentLogs(false);
+        }
+    }
+
+    loadLogs(true);
+    setInterval(() => loadLogs(false), 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "site": {
+    "kysdDomain": "https://u2.kysdm.com",
+    "webDomain": "https://u2.kysdm.com",
+    "cookie": "",
+    "requestTimeout": 5000,
+    "passkey": "",
+    "uid": 0,
+    "apitoken": ""
+  },
+  "business": {
+    "upRate": 1.0,
+    "downRate": 0.0,
+    "torrentMinSize": 1073741824,
+    "torrentMaxSize": 844245094400,
+    "seeders": 10,
+    "ignoreUserNames": []
+  },
+  "qbittorrent": {
+    "global": {
+      "uploadLimit": 51428800,
+      "maxTorrentSizeLimit": 50,
+      "maxTorrentSpeedLimit": 314572800,
+      "category": "U2",
+      "firstLastPiecePrio": true,
+      "categoryLimits": {
+        "U2": 20
+      }
+    },
+    "nodes": [],
+    "qbNodeWeight": {
+      "seedSizeThreshold": 10737418240,
+      "largeSeedSpaceWeight": 0.8,
+      "largeSeedSpeedWeight": 0.2,
+      "smallSeedSpaceWeight": 0.3,
+      "smallSeedSpeedWeight": 0.7,
+      "freeSpaceThreshold": null
+    }
+  },
+  "schedule": {
+    "enable": false,
+    "cron": "0 * * * * ?"
+  },
+  "web": {
+    "signToken": "change-me-token"
+  },
+  "path": {
+    "dbFilePath": "/data/u2/db",
+    "cookieFilePath": "/data/u2/cookie",
+    "xmlFilePath": "/data/u2/xml",
+    "configFilePath": "/data/u2/config"
+  }
+}
+

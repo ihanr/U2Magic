@@ -1,0 +1,23 @@
+{
+  "U2_COOKIE": "",
+  "U2_UID": "",
+  "U2_API_TOKEN": "",
+  "QB_TARGETS": "[\n  {\n    \"name\": \"qB 1\",\n    \"host\": \"http://host.docker.internal\",\n    \"port\": 8080,\n    \"username\": \"\",\n    \"password\": \"\"\n  }\n]",
+  "MAGIC_SELF_ENABLE": "1",
+  "MAGIC_SELF_INTERVAL": "60",
+  "MAGIC_DOWNLOADING": "1",
+  "MAGIC_UPLOAD_RATIO": "2.33",
+  "MAGIC_EXISTING_SKIP_RATIO": "2.0",
+  "MAGIC_MIN_RATE": "1024",
+  "MAGIC_MIN_SIZE": "5",
+  "MAGIC_MIN_DAYS": "180",
+  "UC_MAX": "30000",
+  "TOTAL_UC_MAX": "200000",
+  "MAGIC_ALL_ENABLE": "0",
+  "MAGIC_ALL_INTERVAL": "86400",
+  "MAGIC_ALL_TORRENT_NUM": "5",
+  "MAGIC_ALL_MAX_SEEDER_NUM": "5",
+  "MAGIC_ALL_233_ALL": "1",
+  "MAGIC_ALL_HOURS": "24",
+  "MAGIC_ALL_MIN_RM_HR": "0"
+}

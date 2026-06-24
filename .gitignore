@@ -1,0 +1,18 @@
+.env
+**/__pycache__/
+*.py[cod]
+
+# Local runtime data and credentials
+runtime/
+u2_scripts/webui_config.json
+u2_scripts/webui_config.json.bak
+u2_scripts/auto_magic_seeds.data.txt
+u2_scripts/*.log
+u2_scripts/webui_logs/
+u2magic/deploy/runtime/
+
+# Local build and reverse-engineering artifacts
+u2magic/runtime/
+u2magic/deploy/app*.jar
+u2magic/deploy/auth-classes/
+

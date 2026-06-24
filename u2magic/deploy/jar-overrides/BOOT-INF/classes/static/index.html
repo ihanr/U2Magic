@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统配置管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", "PingFang SC", "Helvetica Neue", sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+
+        /* 导航栏 */
+        .nav {
+            max-width: 1200px;
+            margin: 0 auto 24px;
+            display: flex;
+            gap: 12px;
+            background: #fff;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        }
+
+        .nav a {
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav a.active {
+            background: #409EFF;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+        }
+
+        .nav a.normal {
+            background: #f8f9fc;
+            color: #374151;
+        }
+
+        .nav a.normal:hover {
+            background: #eef2f8;
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 折叠面板 */
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.06);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .panel:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .panel-header {
+            padding: 18px 24px;
+            background: #fafbfc;
+            font-weight: 600;
+            color: #1f2937;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .panel-body {
+            padding: 24px;
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 20px;
+        }
+
+        .panel-body.show {
+            display: grid;
+        }
+
+        /* 表单项 */
+        .form-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* 分类限制独占一行 */
+        .form-item.category-limit-full-row {
+            grid-column: 1 / -1;
+            width: 100%;
+        }
+
+        .form-label {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .form-label .required {
+            color: #f43f5e;
+            margin-right: 4px;
+        }
+
+        .form-label .unit {
+            color: #9ca3af;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+
+        .form-input {
+            padding: 12px 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: #409EFF;
+            box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+        }
+
+        textarea.form-input {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        /* 单位转换提示 */
+        .unit-tip {
+            font-size: 12px;
+            color: #409EFF;
+            margin-top: 4px;
+            line-height: 1;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #409EFF;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 12px;
+            margin-right: 6px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* 节点表格 */
+        .node-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .node-table th, .node-table td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
+        }
+
+        .node-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .node-table tr:hover {
+            background: #f9fafb;
+        }
+
+        /* 弹窗 - 修复过长问题 + 关闭按钮 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: flex-start; /* 改为顶部对齐，避免遮挡底部按钮 */
+            z-index: 999;
+            backdrop-filter: blur(2px);
+            padding-top: 20px; /* 顶部留白 */
+            overflow-y: auto; /* 弹窗内容过长时可滚动 */
+        }
+
+        .modal-content {
+            background: #fff;
+            width: 550px;
+            max-height: 90vh; /* 限制弹窗最大高度为视口90% */
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            animation: modalShow 0.3s ease;
+            position: relative; /* 为关闭按钮定位 */
+            overflow-y: auto; /* 弹窗内部内容可滚动 */
+        }
+
+        /* 弹窗关闭按钮 */
+        .modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #6b7280;
+            transition: all 0.2s ease;
+            z-index: 10; /* 确保在最上层 */
+        }
+
+        .modal-close-btn:hover {
+            background: #e5e7eb;
+            color: #ef4444;
+        }
+
+        @keyframes modalShow {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            margin-bottom: 24px;
+            font-weight: 600;
+            font-size: 18px;
+            color: #1f2937;
+            padding-right: 30px; /* 给关闭按钮留空间 */
+        }
+
+        .modal-footer {
+            margin-top: 28px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* 提示框 */
+        .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 14px 24px;
+            border-radius: 8px;
+            color: #fff;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: toastShow 0.3s ease;
+        }
+
+        @keyframes toastShow {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .toast-success {
+            background: #10b981;
+        }
+
+        .toast-error {
+            background: #ef4444;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        /* 状态标签 */
+        .status-tag {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-enabled {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* 分类限制动态表单样式 */
+        .category-limit-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .category-limit-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .category-limit-row .form-input {
+            flex: 1;
+        }
+
+        .category-limit-row .form-input.category-name {
+            flex: 2;
+        }
+
+        .category-limit-row .form-input.category-value {
+            flex: 1;
+        }
+
+        .add-category-btn {
+            margin-top: 8px;
+            align-self: flex-start;
+        }
+
+        /* 分类限制展示样式 */
+        .category-limit-display {
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+
+        .category-limit-item {
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 2px 4px 2px 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<div class="nav">
+    <a href="addTorrent.html" id="logPage" class="normal">日志</a>
+    <a href="index.html" class="active">系统配置管理</a>
+</div>
+
+<!-- 主容器 -->
+<div class="container">
+    <div class="loading" id="loading">加载配置中...</div>
+
+    <!-- 站点配置 -->
+    <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">U2站点配置 ▼</div>
+        <div class="panel-body" id="sitePanel"></div>
+    </div>
+
+    <!-- QB全局配置 -->
+    <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">QB全局配置 ▼</div>
+        <div class="panel-body" id="qbGlobalPanel"></div>
+    </div>
+
+    <!-- QB权重配置 -->
+    <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">QB节点权重 ▼</div>
+        <div class="panel-body" id="qbWeightPanel"></div>
+    </div>
+
+    <!-- QB节点管理 -->
+    <div class="panel">
+        <div class="panel-header">
+            <span>QB节点管理</span>
+            <button class="btn btn-sm btn-success" onclick="openAddNodeModal()">新增节点</button>
+        </div>
+        <div class="panel-body show" style="display:block; padding:24px;">
+            <table class="node-table" id="nodeTable">
+                <thead>
+                <tr>
+                    <th>节点名称</th>
+                    <th>地址</th>
+                    <th>账号</th>
+                    <th>上传限速</th>
+                    <th>最大任务数</th>
+                    <th>最大速度限制</th>
+                    <th>分类种子限制</th> <!-- 新增列 -->
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="nodeTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 定时任务配置 -->
+    <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">定时任务配置 ▼</div>
+        <div class="panel-body" id="schedulePanel"></div>
+    </div>
+
+    <!-- 业务过滤配置 -->
+    <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">业务过滤配置 ▼</div>
+        <div class="panel-body" id="businessPanel"></div>
+    </div>
+
+    <!-- 接口配置 -->
+    <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">接口安全配置 ▼</div>
+        <div class="panel-body" id="webPanel"></div>
+    </div>
+
+    <!-- 保存按钮 -->
+    <div style="text-align: center; margin-top:10px; position:relative; z-index:1;">
+        <button class="btn btn-primary" onclick="saveAllConfig()">保存全部配置</button>
+        <button class="btn btn-danger" onclick="resetConfig()">重置为默认配置</button>
+    </div>
+</div>
+
+<!-- 新增/编辑节点弹窗 -->
+<div class="modal" id="nodeModal">
+    <div class="modal-content">
+        <!-- 弹窗关闭按钮 -->
+        <button class="modal-close-btn" onclick="closeNodeModal()">×</button>
+        <div class="modal-header" id="nodeModalTitle">新增QB节点</div>
+        <div id="nodeForm"></div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeNodeModal()">取消</button>
+            <button class="btn btn-success" id="nodeModalSubmitBtn" onclick="submitNodeForm()">确认</button>
+        </div>
+    </div>
+</div>
+
+<!-- 提示框 -->
+<div class="toast" id="toast"></div>
+
+<script>
+    // 全局配置
+    let configData = null;
+    const token = getToken();
+    // 当前编辑的节点名称（新增为null）
+    let currentEditNodeName = null;
+
+    document.getElementById('logPage').href = `addTorrent.html?token=${token}`;
+
+    // 配置项中文映射（含单位）
+    const configCnMap = {
+        // U2站点配置
+        kysdDomain: { name: '魔法接口域名', unit: '' },
+        webDomain: { name: '站点域名', unit: '' },
+        cookie: { name: '站点登录Cookie', unit: '' },
+        passkey: { name: '站点密钥', unit: '' },
+        uid: { name: '用户ID', unit: '' },
+        apitoken: { name: 'V1模式API令牌', unit: '' },
+        requestTimeout: { name: '请求超时时间', unit: '毫秒' },
+
+        // QB全局配置
+        uploadLimit: { name: '上传限速', unit: '字节（支持表达式：如50*1024*1024）' },
+        maxTorrentSizeLimit: { name: '最大任务数', unit: '个' },
+        maxTorrentSpeedLimit: { name: '最大速度限制', unit: '字节（支持表达式：如80*1024*1024）' },
+        category: { name: '种子分类名称', unit: '' },
+        firstLastPiecePrio: { name: '是否先首尾下载', unit: 'true/false' },
+        categoryLimits: { name: '分类种子数量限制', unit: '每个分类最大任务数' },
+
+        // QB权重配置
+        seedSizeThreshold: { name: '种子大小阈值', unit: '字节（支持表达式：如50*1024*1024*1024）' },
+        largeSeedSpaceWeight: { name: '大种子-空间权重', unit: '0-1' },
+        largeSeedSpeedWeight: { name: '大种子-上传速度权重', unit: '0-1' },
+        smallSeedSpaceWeight: { name: '小种子-空间权重', unit: '0-1' },
+        smallSeedSpeedWeight: { name: '小种子-上传速度权重', unit: '0-1' },
+
+        // 定时任务配置
+        enable: { name: '是否启用自动上车', unit: 'true/false' },
+        cron: { name: '定时任务表达式', unit: '如：0 * * * * ? （每分钟执行）' },
+
+        // 业务过滤配置
+        upRate: { name: '上传倍率下限', unit: '如2.0（2倍及以上）' },
+        downRate: { name: '下载倍率上限', unit: '如0.5（0.5倍及以下）' },
+        torrentMinSize: { name: '种子最小大小', unit: '字节（支持表达式：如1*1024*1024*1024）' },
+        torrentMaxSize: { name: '种子最大大小', unit: '字节（支持表达式：如600*1024*1024*1024）' },
+        seeders: { name: '做种人数上限', unit: '个（超过则不添加）' },
+        ignoreUserNames: { name: '忽略的用户名列表', unit: '换行分隔' },
+
+        // 接口安全配置
+        signToken: { name: '接口签名Token', unit: '' }
+    };
+
+    // 页面加载
+    window.onload = function () {
+        loadConfig();
+        // 默认展开第一个面板
+        document.querySelectorAll('.panel-body')[0].classList.add('show');
+    };
+
+    // 解析URL参数
+    function getUrlParam(name) {
+        const reg = new RegExp(`(^|&)${name}=([^&]*)(&|$)`);
+        const r = window.location.search.substr(1).match(reg);
+        return r ? decodeURIComponent(r[2]) : '';
+    }
+
+    function getToken() {
+        return getUrlParam('token') || localStorage.getItem('qb_tool_token') || '';
+    }
+
+    // 加载配置
+    async function loadConfig() {
+        try {
+            const res = await fetch(`/api/config/get?token=${token}`);
+            configData = await res.json();
+            renderAllConfig();
+            renderNodeTable();
+            document.getElementById('loading').style.display = 'none';
+        } catch (e) {
+            showToast('加载配置失败', 'error');
+        }
+    }
+
+    // 渲染所有配置
+    function renderAllConfig() {
+        renderPanel('sitePanel', configData.site);
+        renderPanel('qbGlobalPanel', configData.qbittorrent.global);
+        renderPanel('qbWeightPanel', configData.qbittorrent.qbNodeWeight);
+        renderPanel('schedulePanel', configData.schedule);
+        renderPanel('businessPanel', configData.business);
+        renderPanel('webPanel', configData.web);
+    }
+
+    // 渲染面板表单（中文+单位）
+    function renderPanel(panelId, data) {
+        const panel = document.getElementById(panelId);
+        panel.innerHTML = '';
+        for (let key in data) {
+            const value = data[key] === null ? '' : data[key];
+            const cnConfig = configCnMap[key] || { name: formatKey(key), unit: '' };
+
+            const item = document.createElement('div');
+            item.className = 'form-item';
+
+            // 处理分类限制特殊渲染（独占一行）
+            if (key === 'categoryLimits') {
+                item.className = 'form-item category-limit-full-row';
+                item.innerHTML = `
+                    <label class="form-label">
+                        ${cnConfig.name}
+                        ${cnConfig.unit ? `<span class="unit">(${cnConfig.unit})</span>` : ''}
+                    </label>
+                    <div class="category-limit-container" id="${panelId}_categoryLimits">
+                        <!-- 动态渲染分类限制行 -->
+                    </div>
+                    <button class="btn btn-sm btn-success add-category-btn" onclick="addCategoryLimitRow('${panelId}_categoryLimits')">+ 新增分类限制</button>
+                `;
+                panel.appendChild(item);
+
+                // 渲染已有的分类限制
+                const container = document.getElementById(`${panelId}_categoryLimits`);
+                // 初始化至少一行空行
+                if (!value || Object.keys(value).length === 0) {
+                    addCategoryLimitRow(`${panelId}_categoryLimits`);
+                } else {
+                    // 遍历已有配置渲染
+                    Object.entries(value).forEach(([catName, catValue]) => {
+                        addCategoryLimitRow(`${panelId}_categoryLimits`, catName, catValue);
+                    });
+                }
+                continue;
+            }
+
+            // 处理多行文本（如忽略用户名列表）
+            let inputHtml = '';
+            if (key === 'firstLastPiecePrio' || key === 'enable') {
+                inputHtml = `
+                    <select class="form-input" name="${key}">
+                        <option value="true" ${value === true || value === 'true' ? 'selected' : ''}>是</option>
+                        <option value="false" ${value === false || value === 'false' ? 'selected' : ''}>否</option>
+                    </select>
+                `;
+            } else if (key === 'ignoreUserNames') {
+                inputHtml = `<textarea class="form-input" name="${key}">${Array.isArray(value) ? value.join('\n') : value}</textarea>`;
+            } else {
+                inputHtml = `<input type="text" class="form-input" name="${key}" value="${value}">`;
+            }
+
+            item.innerHTML = `
+                <label class="form-label">
+                    ${cnConfig.name}
+                    ${cnConfig.unit ? `<span class="unit">(${cnConfig.unit})</span>` : ''}
+                </label>
+                ${inputHtml}
+            `;
+
+            // 字节转MB/GB提示
+            const byteUnitKeys = ['uploadLimit', 'maxTorrentSpeedLimit', 'seedSizeThreshold',
+                'torrentMinSize', 'torrentMaxSize'];
+            const byteUnitGBKeys =  ['seedSizeThreshold', 'torrentMinSize', 'torrentMaxSize'];
+
+            if (byteUnitKeys.includes(key)) {
+                const unitTip = document.createElement('div');
+                unitTip.className = 'unit-tip';
+                unitTip.id = `${key}UnitTip`;
+
+                if (byteUnitGBKeys.includes(key)) {
+                    const mbValue = calculateByteToGB(value);
+                    unitTip.textContent = mbValue ? `${mbValue} G` : '';
+                } else {
+                    const mbValue = calculateByteToMB(value);
+                    unitTip.textContent = mbValue ? `${mbValue} M/S` : '';
+                }
+                item.appendChild(unitTip);
+
+                // 监听输入事件，实时计算
+                const input = item.querySelector(`input[name="${key}"]`);
+                input.addEventListener('input', function() {
+                    const inputVal = this.value;
+                    const parsedVal = parseExpression(inputVal);
+
+                    let textContent = ''
+                    if (byteUnitGBKeys.includes(key)) {
+                        const mbValue = calculateByteToGB(parsedVal);
+                        textContent = mbValue ? `${mbValue} G` : '';
+                    } else {
+                        const mbValue = calculateByteToMB(parsedVal);
+                        textContent = mbValue ? `${mbValue} M/S` : '';
+                    }
+                    document.getElementById(`${key}UnitTip`).textContent = textContent;
+                });
+            }
+
+            panel.appendChild(item);
+        }
+    }
+
+    // 添加分类限制行
+    function addCategoryLimitRow(containerId, initName = '', initValue = '') {
+        const container = document.getElementById(containerId);
+        const rowId = `category_row_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        const row = document.createElement('div');
+        row.className = 'category-limit-row';
+        row.id = rowId;
+        row.innerHTML = `
+            <input type="text" class="form-input category-name" placeholder="分类名称" value="${initName}">
+            <input type="text" class="form-input category-value" placeholder="最大任务数（支持表达式：如10*1）" value="${initValue}">
+            <button class="btn btn-sm btn-danger" onclick="removeCategoryLimitRow('${rowId}')">删除</button>
+        `;
+
+        container.appendChild(row);
+
+        // 给数值输入框添加表达式解析和提示
+        const valueInput = row.querySelector('.category-value');
+        valueInput.addEventListener('input', function() {
+            const inputVal = this.value;
+            const parsedVal = parseExpression(inputVal);
+            if (parsedVal && !isNaN(parsedVal)) {
+                this.title = `解析后值：${parsedVal}`;
+            } else {
+                this.title = '';
+            }
+        });
+    }
+
+    // 删除分类限制行
+    function removeCategoryLimitRow(rowId) {
+        const row = document.getElementById(rowId);
+        const container = row.parentElement;
+        if (container.children.length > 1) {
+            row.remove();
+        } else {
+            row.querySelector('.category-name').value = '';
+            row.querySelector('.category-value').value = '';
+            showToast('至少保留一行分类配置', 'warning');
+        }
+    }
+
+    // 字节转MB（保留2位小数）
+    function calculateByteToMB(byteVal) {
+        if (!byteVal || isNaN(byteVal)) return '';
+        const mb = Number(byteVal) / 1024 / 1024;
+        return mb.toFixed(2);
+    }
+
+    // 字节转GB（保留2位小数）
+    function calculateByteToGB(byteVal) {
+        if (!byteVal || isNaN(byteVal)) return '';
+        const gb = Number(byteVal) / 1024 / 1024 / 1024;
+        return gb.toFixed(2);
+    }
+
+    // 渲染节点表格（新增分类限制列）
+    function renderNodeTable() {
+        const body = document.getElementById('nodeTableBody');
+        body.innerHTML = '';
+        configData.qbittorrent.nodes.forEach(node => {
+            const tr = document.createElement('tr');
+
+            let qbittorrent = configData.qbittorrent;
+            let uploadLimit = node.uploadLimit ? node.uploadLimit : qbittorrent.global.uploadLimit;
+            let maxTorrentSizeLimit = node.maxTorrentSizeLimit ? node.maxTorrentSizeLimit : qbittorrent.global.maxTorrentSizeLimit;
+            let maxTorrentSpeedLimit = node.maxTorrentSpeedLimit ? node.maxTorrentSpeedLimit : qbittorrent.global.maxTorrentSpeedLimit;
+
+            // 处理分类限制展示
+            let categoryLimitsHtml = '-';
+            const categoryLimits = node.categoryLimits || qbittorrent.global.categoryLimits || {};
+            if (Object.keys(categoryLimits).length > 0) {
+                categoryLimitsHtml = '<div class="category-limit-display">';
+                Object.entries(categoryLimits).forEach(([name, value]) => {
+                    categoryLimitsHtml += `<span class="category-limit-item">${name}: ${value}</span>`;
+                });
+                categoryLimitsHtml += '</div>';
+            }
+
+            tr.innerHTML = `
+                <td>${node.name}</td>
+                <td>${node.host}</td>
+                <td>${node.username}</td>
+                <td>${uploadLimit ? Math.round(((uploadLimit / 1024 / 1024) +  Number.EPSILON) * 100)/100 + ' M/S' : ''}</td>
+                <td>${maxTorrentSizeLimit ? maxTorrentSizeLimit : ''}</td>
+                <td>${maxTorrentSpeedLimit ?
+                Math.round(((maxTorrentSpeedLimit / 1024 / 1024) +  Number.EPSILON) * 100)/100  +
+                ' M/S' :
+                ''}</td>
+                <td>${categoryLimitsHtml}</td> <!-- 新增分类限制列 -->
+                <td>
+                    <span class="status-tag ${node.enabled ? 'status-enabled' : 'status-disabled'}">
+                        ${node.enabled ? '启用' : '禁用'}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-warning" onclick="openEditNodeModal('${node.name}')">编辑</button>
+                    <button class="btn btn-sm ${node.enabled ? 'btn-danger' : 'btn-success'}" onclick="toggleNode('${node.name}',${!node.enabled})">
+                        ${node.enabled ? '禁用' : '启用'}
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteNode('${node.name}')">删除</button>
+                </td>
+            `;
+            body.appendChild(tr);
+        });
+    }
+
+    // 切换面板
+    function togglePanel(el) {
+        const body = el.nextElementSibling;
+        let toggleResult = body.classList.toggle('show');
+        if (toggleResult) {
+            el.innerHTML = el.innerHTML.replace('▲','▼');
+        } else {
+            el.innerHTML = el.innerHTML.replace('▼','▲');
+        }
+    }
+
+    // 解析数值表达式
+    function parseExpression(value) {
+        if (/^\d+$/.test(value)) return value;
+        try {
+            if (/^[\d\*]+$/.test(value)) {
+                return eval(value).toString();
+            }
+        } catch (e) {
+            console.warn('表达式解析失败:', value, e);
+        }
+        return value;
+    }
+
+    // 保存全部配置（修复分类限制数据提交）
+    async function saveAllConfig() {
+        try {
+            collectFormData();
+            await fetch(`/api/config/update?token=${token}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(configData)
+            });
+            showToast('保存成功', 'success');
+            loadConfig();
+        } catch (e) {
+            showToast('保存失败', 'error');
+        }
+    }
+
+    // 收集表单数据
+    function collectFormData() {
+        configData.site = collectPanel('sitePanel');
+        configData.qbittorrent.global = collectPanel('qbGlobalPanel');
+        configData.qbittorrent.qbNodeWeight = collectPanel('qbWeightPanel');
+        configData.schedule = collectPanel('schedulePanel');
+        configData.business = collectPanel('businessPanel');
+        configData.web = collectPanel('webPanel');
+    }
+
+    // 收集面板数据（修复分类限制数据收集）
+    function collectPanel(panelId) {
+        const inputs = document.querySelectorAll(`#${panelId} .form-input`);
+        const data = {};
+
+        // 先收集普通输入框数据
+        inputs.forEach(input => {
+            let value = input.value;
+            const key = input.name;
+
+            if (['uploadLimit', 'maxTorrentSpeedLimit', 'seedSizeThreshold',
+                'torrentMinSize', 'torrentMaxSize', 'maxTorrentSizeLimit', 'seeders'].includes(key)) {
+                value = parseExpression(value);
+            }
+
+            if (key === 'ignoreUserNames') {
+                data[key] = value.split('\n').map(item => item.trim()).filter(item => item);
+            } else if (key) { // 只处理有name属性的输入框
+                data[key] = value;
+            }
+        });
+
+        // 单独收集分类限制配置（确保一定会收集）
+        const categoryLimitContainer = document.getElementById(`${panelId}_categoryLimits`);
+        if (categoryLimitContainer) {
+            const categoryLimits = {};
+            const rows = categoryLimitContainer.querySelectorAll('.category-limit-row');
+            rows.forEach(row => {
+                const nameInput = row.querySelector('.category-name');
+                const valueInput = row.querySelector('.category-value');
+
+                if (nameInput && valueInput) {
+                    const name = nameInput.value.trim();
+                    const value = valueInput.value.trim();
+                    if (name && value) {
+                        const parsedValue = parseExpression(value);
+                        categoryLimits[name] = parsedValue ? Number(parsedValue) : 0;
+                    }
+                }
+            });
+            data.categoryLimits = categoryLimits; // 强制赋值，确保数据提交
+        }
+
+        return data;
+    }
+
+    // 节点操作：启用/禁用
+    async function toggleNode(name, enabled) {
+        await fetch(`/api/config/qb/node/toggle?nodeName=${name}&enabled=${enabled}&token=${token}`, {
+            method: 'POST'
+        });
+        showToast(enabled ? '启用成功' : '禁用成功', 'success');
+        loadConfig();
+    }
+
+    // 节点操作：删除
+    async function deleteNode(name) {
+        if (!confirm('确定删除该节点？此操作不可恢复！')) return;
+        await fetch(`/api/config/qb/node/delete?nodeName=${name}&token=${token}`, {
+            method: 'POST'
+        });
+        showToast('删除成功', 'success');
+        loadConfig();
+    }
+
+    // 打开新增节点弹窗
+    function openAddNodeModal() {
+        currentEditNodeName = null;
+        document.getElementById('nodeModalTitle').innerText = '新增QB节点';
+        renderNodeForm();
+        document.getElementById('nodeModal').style.display = 'flex';
+    }
+
+    // 打开编辑节点弹窗
+    function openEditNodeModal(nodeName) {
+        currentEditNodeName = nodeName;
+        document.getElementById('nodeModalTitle').innerText = '编辑QB节点';
+        const node = configData.qbittorrent.nodes.find(n => n.name === nodeName);
+        if (node) {
+            renderNodeForm(node);
+            document.getElementById('nodeModal').style.display = 'flex';
+        } else {
+            showToast('节点不存在', 'error');
+        }
+    }
+
+    // 关闭节点弹窗
+    function closeNodeModal() {
+        document.getElementById('nodeModal').style.display = 'none';
+        currentEditNodeName = null;
+    }
+
+    // 渲染节点表单（修复分类限制独占一行 + 关闭按钮）
+    function renderNodeForm(node = {}) {
+        const form = document.getElementById('nodeForm');
+        const name = node.name || '';
+        const host = node.host || '';
+        const username = node.username || '';
+        const password = node.password || '';
+        const uploadLimit = node['upload-limit'] || node.uploadLimit || '';
+        const maxTorrentSizeLimit = node['max-torrent-size-limit'] || node.maxTorrentSizeLimit || '';
+        const maxTorrentSpeedLimit = node['max-torrent-speed-limit'] || node.maxTorrentSpeedLimit || '';
+        const enabled = node.enabled !== undefined ? node.enabled : true;
+        const categoryLimits = node.categoryLimits || {};
+
+        form.innerHTML = `
+            <div class="form-item">
+                <label class="form-label"><span class="required">*</span>节点名称</label>
+                <input class="form-input" id="nodeName" placeholder="请输入唯一节点名称" value="${name}" ${currentEditNodeName ? 'readonly' : ''}>
+                ${currentEditNodeName ? '<small style="color:#9ca3af;">节点名称不可修改</small>' : ''}
+            </div>
+            <div class="form-item">
+                <label class="form-label"><span class="required">*</span>节点地址</label>
+                <input class="form-input" id="nodeHost" placeholder="例：http://192.168.1.100:8080" value="${host}">
+            </div>
+            <div class="form-item">
+                <label class="form-label"><span class="required">*</span>登录账号</label>
+                <input class="form-input" id="nodeUser" placeholder="QB WebUI 登录账号" value="${username}">
+            </div>
+            <div class="form-item">
+                <label class="form-label"><span class="required">*</span>登录密码</label>
+                <input type="password" class="form-input" id="nodePwd" placeholder="QB WebUI 登录密码" value="${password}">
+            </div>
+            <div class="form-item">
+                <label class="form-label">上传限速（选填，覆盖全局）<span class="unit">（字节，支持表达式：如48*1024*1024）</span></label>
+                <input class="form-input" id="uploadLimit" placeholder="例：48*1024*1024（50MB/s），不填使用全局配置" value="${uploadLimit}">
+                ${uploadLimit ? `<div class="unit-tip">${calculateByteToMB(uploadLimit)} M/S</div>` : ''}
+            </div>
+            <div class="form-item">
+                <label class="form-label">最大任务数（选填，覆盖全局）<span class="unit">（个）</span></label>
+                <input class="form-input" id="maxTorrentSizeLimit" placeholder="例：12，不填使用全局配置" value="${maxTorrentSizeLimit}">
+            </div>
+            <div class="form-item">
+                <label class="form-label">最大速度限制（选填，覆盖全局）<span class="unit">（字节，支持表达式：如80*1024*1024）</span></label>
+                <input class="form-input" id="maxTorrentSpeedLimit" placeholder="例：80*1024*1024，不填使用全局配置" value="${maxTorrentSpeedLimit}">
+                ${maxTorrentSpeedLimit ? `<div class="unit-tip">${calculateByteToMB(maxTorrentSpeedLimit)} M/S</div>` : ''}
+            </div>
+            <!-- 节点分类种子数量限制（独占一行） -->
+            <div class="form-item category-limit-full-row">
+                <label class="form-label">分类种子数量限制（选填，覆盖全局）<span class="unit">（每个分类最大任务数）</span></label>
+                <div class="category-limit-container" id="node_categoryLimits">
+                    <!-- 动态渲染分类限制行 -->
+                </div>
+                <button class="btn btn-sm btn-success add-category-btn" onclick="addCategoryLimitRow('node_categoryLimits')">+ 新增分类限制</button>
+            </div>
+            <div class="form-item" style="flex-direction:row;align-items:center;gap:10px;margin-top:8px;">
+                <label class="form-label">节点状态：</label>
+                <select id="nodeEnabled" class="form-input" style="width:auto;">
+                    <option value="true" ${enabled ? 'selected' : ''}>启用</option>
+                    <option value="false" ${!enabled ? 'selected' : ''}>禁用</option>
+                </select>
+            </div>
+        `;
+
+        // 渲染节点的分类限制
+        const categoryContainer = document.getElementById('node_categoryLimits');
+        if (Object.keys(categoryLimits).length === 0) {
+            addCategoryLimitRow('node_categoryLimits');
+        } else {
+            Object.entries(categoryLimits).forEach(([catName, catValue]) => {
+                addCategoryLimitRow('node_categoryLimits', catName, catValue);
+            });
+        }
+
+        // 节点表单中的上传限速/最大速度限制实时转换
+        ['uploadLimit', 'maxTorrentSpeedLimit'].forEach(key => {
+            const input = form.querySelector(`#${key}`);
+            if (input) {
+                input.addEventListener('input', function() {
+                    const inputVal = this.value;
+                    const parsedVal = parseExpression(inputVal);
+                    const mbVal = calculateByteToMB(parsedVal);
+                    let tip = this.nextElementSibling;
+                    if (!tip || !tip.classList.contains('unit-tip')) {
+                        tip = document.createElement('div');
+                        tip.className = 'unit-tip';
+                        this.parentNode.appendChild(tip);
+                    }
+                    tip.textContent = mbVal ? `${mbVal} M/S` : '';
+                });
+            }
+        });
+    }
+
+    // 提交节点表单（修复分类限制数据提交）
+    async function submitNodeForm() {
+        const name = document.getElementById('nodeName').value.trim();
+        const host = document.getElementById('nodeHost').value.trim();
+        const username = document.getElementById('nodeUser').value.trim();
+        const password = document.getElementById('nodePwd').value.trim();
+        const uploadLimit = document.getElementById('uploadLimit').value.trim();
+        const maxTorrentSizeLimit = document.getElementById('maxTorrentSizeLimit').value.trim();
+        const maxTorrentSpeedLimit = document.getElementById('maxTorrentSpeedLimit').value.trim();
+        const enabled = document.getElementById('nodeEnabled').value === 'true';
+
+        // 强制收集分类限制配置（修复数据提交问题）
+        const categoryLimits = {};
+        const categoryRows = document.querySelectorAll('#node_categoryLimits .category-limit-row');
+        categoryRows.forEach(row => {
+            const catName = row.querySelector('.category-name').value.trim();
+            const catValue = row.querySelector('.category-value').value.trim();
+            if (catName && catValue) {
+                const parsedValue = parseExpression(catValue);
+                categoryLimits[catName] = parsedValue ? Number(parsedValue) : 0;
+            }
+        });
+
+        // 必填项校验
+        if (!name) { showToast('请输入节点名称！', 'error'); return; }
+        if (!host) { showToast('请输入节点地址！', 'error'); return; }
+        if (!username) { showToast('请输入登录账号！', 'error'); return; }
+        if (!password) { showToast('请输入登录密码！', 'error'); return; }
+
+        // 解析表达式
+        const parsedUploadLimit = uploadLimit ? parseExpression(uploadLimit) : '';
+        const parsedMaxTask = maxTorrentSizeLimit ? parseExpression(maxTorrentSizeLimit) : '';
+        const parsedMaxSpeed = maxTorrentSpeedLimit ? parseExpression(maxTorrentSpeedLimit) : '';
+
+        // 组装节点数据（确保分类限制数据一定会提交）
+        const nodeData = {
+            name: name,
+            host: host,
+            username: username,
+            password: password,
+            enabled: enabled,
+            ...(parsedUploadLimit && { 'uploadLimit': parsedUploadLimit }),
+            ...(parsedMaxTask && { 'maxTorrentSizeLimit': parsedMaxTask }),
+            ...(parsedMaxSpeed && { 'maxTorrentSpeedLimit': parsedMaxSpeed }),
+            categoryLimits: categoryLimits // 强制包含分类限制，空对象也提交
+        };
+
+        try {
+            if (currentEditNodeName) {
+                await fetch(`/api/config/qb/node/edit?oldName=${currentEditNodeName}&token=${token}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(nodeData)
+                });
+                showToast('节点编辑成功！', 'success');
+            } else {
+                await fetch(`/api/config/qb/node/add?token=${token}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(nodeData)
+                });
+                showToast('节点新增成功！', 'success');
+            }
+            closeNodeModal();
+            loadConfig();
+        } catch (e) {
+            showToast(currentEditNodeName ? '编辑失败！' : '新增失败！', 'error');
+        }
+    }
+
+    // 提示框
+    function showToast(msg, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = `toast toast-${type}`;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 2500);
+    }
+
+    // 格式化key
+    function formatKey(key) {
+        return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+    }
+
+    // 重置所有配置
+    async function resetConfig() {
+        const confirmReset = confirm('警告：此操作将清除所有自定义配置，恢复为系统默认配置！\n确定要继续吗？');
+        if (!confirmReset) return;
+
+        try {
+            await fetch(`/api/config/reset?token=${token}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            showToast('配置已重置为默认值', 'success');
+            loadConfig();
+        } catch (e) {
+            console.error('重置配置失败：', e);
+            showToast('重置配置失败，请重试', 'error');
+        }
+    }
+</script>
+</body>
+</html>

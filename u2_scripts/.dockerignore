@@ -1,0 +1,8 @@
+.git
+.venv
+__pycache__
+*.log
+*.data.txt
+webui_config.json
+webui_logs
+
