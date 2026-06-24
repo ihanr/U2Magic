@@ -463,12 +463,6 @@
         <div class="panel-body" id="businessPanel"></div>
     </div>
 
-    <!-- 接口配置 -->
-    <div class="panel">
-        <div class="panel-header" onclick="togglePanel(this)">接口安全配置 ▼</div>
-        <div class="panel-body" id="webPanel"></div>
-    </div>
-
     <!-- 保存按钮 -->
     <div style="text-align: center; margin-top:10px; position:relative; z-index:1;">
         <button class="btn btn-primary" onclick="saveAllConfig()">保存全部配置</button>
@@ -496,11 +490,11 @@
 <script>
     // 全局配置
     let configData = null;
-    const token = getToken();
+    const token = 'u2magic-internal';
     // 当前编辑的节点名称（新增为null）
     let currentEditNodeName = null;
 
-    document.getElementById('logPage').href = `addTorrent.html?token=${token}`;
+    document.getElementById('logPage').href = 'addTorrent.html';
 
     // 配置项中文映射（含单位）
     const configCnMap = {
@@ -540,8 +534,6 @@
         seeders: { name: '做种人数上限', unit: '个（超过则不添加）' },
         ignoreUserNames: { name: '忽略的用户名列表', unit: '换行分隔' },
 
-        // 接口安全配置
-        signToken: { name: '接口签名Token', unit: '' }
     };
 
     // 页面加载
@@ -550,17 +542,6 @@
         // 默认展开第一个面板
         document.querySelectorAll('.panel-body')[0].classList.add('show');
     };
-
-    // 解析URL参数
-    function getUrlParam(name) {
-        const reg = new RegExp(`(^|&)${name}=([^&]*)(&|$)`);
-        const r = window.location.search.substr(1).match(reg);
-        return r ? decodeURIComponent(r[2]) : '';
-    }
-
-    function getToken() {
-        return getUrlParam('token') || localStorage.getItem('qb_tool_token') || '';
-    }
 
     // 加载配置
     async function loadConfig() {
@@ -582,7 +563,6 @@
         renderPanel('qbWeightPanel', configData.qbittorrent.qbNodeWeight);
         renderPanel('schedulePanel', configData.schedule);
         renderPanel('businessPanel', configData.business);
-        renderPanel('webPanel', configData.web);
     }
 
     // 渲染面板表单（中文+单位）
@@ -843,7 +823,6 @@
         configData.qbittorrent.qbNodeWeight = collectPanel('qbWeightPanel');
         configData.schedule = collectPanel('schedulePanel');
         configData.business = collectPanel('businessPanel');
-        configData.web = collectPanel('webPanel');
     }
 
     // 收集面板数据（修复分类限制数据收集）

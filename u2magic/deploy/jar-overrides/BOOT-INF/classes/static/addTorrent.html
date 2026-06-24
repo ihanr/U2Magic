@@ -53,10 +53,8 @@
 </div>
 
 <script>
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token') || localStorage.getItem('qb_tool_token') || '';
     let currentLogText = '';
-    document.getElementById('configPage').href = `index.html${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    document.getElementById('configPage').href = '/';
 
     const zh = {
         noLog: '\u6682\u65e0\u65e5\u5fd7',

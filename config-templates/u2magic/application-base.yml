@@ -1,4 +1,3 @@
 khc:
   web:
-    sign-token: change-me-token
-
+    sign-token: u2magic-internal

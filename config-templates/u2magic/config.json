@@ -42,7 +42,7 @@
     "cron": "0 * * * * ?"
   },
   "web": {
-    "signToken": "change-me-token"
+    "signToken": "u2magic-internal"
   },
   "path": {
     "dbFilePath": "/data/u2/db",
@@ -51,4 +51,3 @@
     "configFilePath": "/data/u2/config"
   }
 }
-

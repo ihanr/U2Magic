@@ -36,18 +36,13 @@ docker compose ps
 - U2Magic：`http://服务器IP:18080/`
 - u2_scripts：`http://服务器IP:18765/`
 
-U2Magic 的默认接口 Token 是：
+首次登录后，请分别在两个 WebUI 中填写自己的 U2 Cookie、API Token、UID 和 qBittorrent 节点信息。
+
+U2Magic 直接使用根地址访问，不需要添加 `index.html`、`?token=...` 或其他后缀：
 
 ```text
-change-me-token
+http://服务器IP:18080/
 ```
-
-首次登录后，请分别在两个 WebUI 中填写自己的 U2 Cookie、API Token、UID 和 qBittorrent 节点信息，并修改 U2Magic 的接口 Token。
-
-修改 U2Magic 接口 Token 时，需要同步修改：
-
-- `config-templates/u2magic/application-base.yml`
-- U2Magic WebUI 中的 `signToken`
 
 ## 常用命令
 
