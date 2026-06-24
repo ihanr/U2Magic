@@ -19,3 +19,8 @@ RUN cd /work \
 
 FROM kuanghom/u2magic:latest
 COPY --from=patcher /work/app.jar /data/u2Magic/lib/app.jar
+COPY defaults/ /opt/u2magic-defaults/
+COPY entrypoint.sh /usr/local/bin/u2magic-entrypoint.sh
+RUN chmod +x /usr/local/bin/u2magic-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/u2magic-entrypoint.sh"]
+CMD []

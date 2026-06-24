@@ -1,66 +1,31 @@
 # U2Magic + u2_scripts
 
-## docker-compose.yml 示例
+复制下面的 Docker Compose 即可部署，无需克隆仓库：
 
 ```yaml
 services:
-  init:
-    image: alpine:3.21
-    restart: "no"
-    command:
-      - /bin/sh
-      - -c
-      - |
-        set -eu
-        mkdir -p /runtime/u2magic/data/config /runtime/u2magic/data/cookie
-        mkdir -p /runtime/u2magic/data/db /runtime/u2magic/data/xml
-        mkdir -p /runtime/u2magic/logs /runtime/u2_scripts/logs
-        test -f /runtime/u2magic/data/config/config.json ||
-          cp /templates/u2magic/config.json /runtime/u2magic/data/config/config.json
-        test -f /runtime/u2_scripts/webui_config.json ||
-          cp /templates/u2_scripts/webui_config.json /runtime/u2_scripts/webui_config.json
-    volumes:
-      - ./config-templates:/templates:ro
-      - ./runtime:/runtime
-
   u2magic:
-    build:
-      context: ./u2magic/deploy
-    image: u2magic-local:latest
+    image: ghcr.io/ihanr/u2magic-app:latest
     restart: unless-stopped
-    depends_on:
-      init:
-        condition: service_completed_successfully
     expose:
       - "18080"
     volumes:
-      - ./runtime/u2magic/logs:/data/u2Magic/logs
-      - ./runtime/u2magic/data:/data/u2
-      - ./config-templates/u2magic/application-base.yml:/data/u2Magic/config/application-base.yml:ro
+      - u2magic-data:/data/u2
+      - u2magic-logs:/data/u2Magic/logs
     extra_hosts:
       - "u2.dmhy.org:104.25.27.31"
 
   u2magic-logs:
-    image: python:3.13-alpine
+    image: ghcr.io/ihanr/u2magic-logs:latest
     restart: unless-stopped
-    depends_on:
-      init:
-        condition: service_completed_successfully
-    command: ["python", "/app/log_server.py"]
     expose:
       - "18081"
     volumes:
-      - ./u2magic/deploy/log_server.py:/app/log_server.py:ro
-      - ./runtime/u2magic/logs:/app/logs:ro
+      - u2magic-logs:/app/logs:ro
 
   u2-scripts:
-    build:
-      context: ./u2_scripts
-    image: u2-scripts-local:latest
+    image: ghcr.io/ihanr/u2magic-scripts:latest
     restart: unless-stopped
-    depends_on:
-      init:
-        condition: service_completed_successfully
     environment:
       PYTHONUTF8: "1"
       U2_WEBUI_HOST: "0.0.0.0"
@@ -74,12 +39,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./runtime/u2_scripts:/runtime
+      - u2-scripts-data:/runtime
 
   gateway:
-    build:
-      context: ./nginx
-    image: u2-gateway-local:latest
+    image: ghcr.io/ihanr/u2magic-gateway:latest
     restart: unless-stopped
     environment:
       NGINX_USERNAME: "admin"
@@ -91,10 +54,11 @@ services:
     ports:
       - "18080:18080"
       - "18765:18765"
-```
 
-```bash
-docker compose up -d --build
+volumes:
+  u2magic-data:
+  u2magic-logs:
+  u2-scripts-data:
 ```
 
 - U2Magic：`http://服务器IP:18080/`
