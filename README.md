@@ -1,87 +1,101 @@
-# U2Magic + u2_scripts Docker Compose
+# U2Magic + u2_scripts
 
-使用一个 Docker Compose 同时运行：
-
-- U2Magic
-- `u2_scripts` Auto Magic Seeds WebUI
-- U2Magic 日志服务
-- Nginx 统一登录网关
-
-两个应用自身的 WebUI 密码已经关闭，外部只能通过 Nginx 暴露的统一账号密码访问。
-
-## 使用前修改密码
-
-编辑 `docker-compose.yml`：
+## docker-compose.yml 示例
 
 ```yaml
-gateway:
-  environment:
-    NGINX_USERNAME: "admin"
-    NGINX_PASSWORD: "change-me-now"
+services:
+  init:
+    image: alpine:3.21
+    restart: "no"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        mkdir -p /runtime/u2magic/data/config /runtime/u2magic/data/cookie
+        mkdir -p /runtime/u2magic/data/db /runtime/u2magic/data/xml
+        mkdir -p /runtime/u2magic/logs /runtime/u2_scripts/logs
+        test -f /runtime/u2magic/data/config/config.json ||
+          cp /templates/u2magic/config.json /runtime/u2magic/data/config/config.json
+        test -f /runtime/u2_scripts/webui_config.json ||
+          cp /templates/u2_scripts/webui_config.json /runtime/u2_scripts/webui_config.json
+    volumes:
+      - ./config-templates:/templates:ro
+      - ./runtime:/runtime
+
+  u2magic:
+    build:
+      context: ./u2magic/deploy
+    image: u2magic-local:latest
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    expose:
+      - "18080"
+    volumes:
+      - ./runtime/u2magic/logs:/data/u2Magic/logs
+      - ./runtime/u2magic/data:/data/u2
+      - ./config-templates/u2magic/application-base.yml:/data/u2Magic/config/application-base.yml:ro
+    extra_hosts:
+      - "u2.dmhy.org:104.25.27.31"
+
+  u2magic-logs:
+    image: python:3.13-alpine
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    command: ["python", "/app/log_server.py"]
+    expose:
+      - "18081"
+    volumes:
+      - ./u2magic/deploy/log_server.py:/app/log_server.py:ro
+      - ./runtime/u2magic/logs:/app/logs:ro
+
+  u2-scripts:
+    build:
+      context: ./u2_scripts
+    image: u2-scripts-local:latest
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    environment:
+      PYTHONUTF8: "1"
+      U2_WEBUI_HOST: "0.0.0.0"
+      U2_WEBUI_PORT: "18765"
+      U2_WEBUI_CONFIG_PATH: "/runtime/webui_config.json"
+      U2_WEBUI_LOG_DIR: "/runtime/logs"
+      AUTO_MAGIC_DATA_PATH: "/runtime/auto_magic_seeds.data.txt"
+      AUTO_MAGIC_LOG_PATH: "/runtime/auto_magic_seeds.log"
+    expose:
+      - "18765"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./runtime/u2_scripts:/runtime
+
+  gateway:
+    build:
+      context: ./nginx
+    image: u2-gateway-local:latest
+    restart: unless-stopped
+    environment:
+      NGINX_USERNAME: "admin"
+      NGINX_PASSWORD: "请修改为自己的密码"
+    depends_on:
+      - u2magic
+      - u2magic-logs
+      - u2-scripts
+    ports:
+      - "18080:18080"
+      - "18765:18765"
 ```
-
-请务必将默认密码改成自己的强密码。
-
-## 启动
 
 ```bash
 docker compose up -d --build
-docker compose ps
 ```
-
-首次启动时，`init` 服务会从 `config-templates/` 复制空白配置到本机 `runtime/`。`runtime/` 已被 Git 忽略，不会上传 Cookie、Token、qB 密码、日志和数据库。
-
-访问地址：
 
 - U2Magic：`http://服务器IP:18080/`
 - u2_scripts：`http://服务器IP:18765/`
-
-首次登录后，请分别在两个 WebUI 中填写自己的 U2 Cookie、API Token、UID 和 qBittorrent 节点信息。
-
-U2Magic 直接使用根地址访问，不需要添加 `index.html`、`?token=...` 或其他后缀：
-
-```text
-http://服务器IP:18080/
-```
-
-## 常用命令
-
-```bash
-docker compose logs -f
-docker compose restart
-docker compose down
-```
-
-修改统一登录密码后，重新创建网关：
-
-```bash
-docker compose up -d --build --force-recreate gateway
-```
-
-需要恢复全新的空白配置时：
-
-```bash
-docker compose down
-rm -rf runtime
-docker compose up -d --build
-```
-
-Windows PowerShell 删除运行配置：
-
-```powershell
-docker compose down
-Remove-Item -Recurse -Force runtime
-docker compose up -d --build
-```
-
-## 安全说明
-
-- 不要提交 `runtime/`。
-- 不要将真实 Cookie、Passkey、API Token 或 qB 密码写进 `config-templates/`。
-- 默认提供的是 HTTP Basic Auth；公网使用时建议再配置 HTTPS、Cloudflare Tunnel 或其他 TLS 入口。
-- `u2magic` 和 `u2-scripts` 只使用 Docker 内部端口，只有 Nginx 网关发布宿主机端口。
-
-## 上游项目
-
-- [Kuanghom/U2Magic](https://github.com/Kuanghom/U2Magic)
-- [Haruite/u2_scripts](https://github.com/Haruite/u2_scripts)
