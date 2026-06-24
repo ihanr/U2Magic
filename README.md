@@ -36,14 +36,6 @@ docker compose ps
 - U2Magic：`http://服务器IP:18080/`
 - u2_scripts：`http://服务器IP:18765/`
 
-首次登录后，请分别在两个 WebUI 中填写自己的 U2 Cookie、API Token、UID 和 qBittorrent 节点信息。
-
-U2Magic 直接使用根地址访问，不需要添加 `index.html`、`?token=...` 或其他后缀：
-
-```text
-http://服务器IP:18080/
-```
-
 ## 常用命令
 
 ```bash
