@@ -5,7 +5,8 @@
 ```yaml
 services:
   u2magic:
-    image: ghcr.io/ihanr/u2magic-app:latest
+    image: ghcr.io/ihanr/u2magic-app:20260625
+    container_name: Shoo_Magic
     restart: unless-stopped
     expose:
       - "18080"
@@ -16,7 +17,7 @@ services:
       - "u2.dmhy.org:104.25.27.31"
 
   u2magic-logs:
-    image: ghcr.io/ihanr/u2magic-logs:latest
+    image: ghcr.io/ihanr/u2magic-logs:20260625
     restart: unless-stopped
     expose:
       - "18081"
@@ -24,7 +25,8 @@ services:
       - u2magic-logs:/app/logs:ro
 
   u2-scripts:
-    image: ghcr.io/ihanr/u2magic-scripts:latest
+    image: ghcr.io/ihanr/u2magic-scripts:20260625
+    container_name: Shoo_U2scripts
     restart: unless-stopped
     environment:
       PYTHONUTF8: "1"
@@ -42,7 +44,7 @@ services:
       - u2-scripts-data:/runtime
 
   gateway:
-    image: ghcr.io/ihanr/u2magic-gateway:latest
+    image: ghcr.io/ihanr/u2magic-gateway:20260625
     restart: unless-stopped
     environment:
       NGINX_USERNAME: "admin"
