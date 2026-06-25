@@ -62,4 +62,4 @@ volumes:
 ```
 
 - U2Magic：`http://服务器IP:18080/`
-- u2_scripts：`http://服务器IP:18765/`
+- U2Scripts：`http://服务器IP:18765/`
