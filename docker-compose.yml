@@ -1,7 +1,6 @@
 services:
   u2magic:
     image: ghcr.io/ihanr/u2magic-app:20260625
-    container_name: Shoo_Magic
     restart: unless-stopped
     expose:
       - "18080"
@@ -21,7 +20,6 @@ services:
 
   u2-scripts:
     image: ghcr.io/ihanr/u2magic-scripts:20260625
-    container_name: Shoo_U2scripts
     restart: unless-stopped
     environment:
       PYTHONUTF8: "1"

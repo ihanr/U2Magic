@@ -66,7 +66,7 @@ HTML = r'''<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Auto Magic Seeds</title>
+  <title>Shoo_U2scripts 20260625</title>
   <style>
     :root {
       --bg: #f6f7fb;
@@ -238,7 +238,7 @@ HTML = r'''<!doctype html>
 </head>
 <body>
   <header>
-    <h1>Auto Magic Seeds</h1>
+    <h1>Shoo_U2scripts <small class="muted">20260625</small></h1>
     <span id="clock" class="muted"></span>
   </header>
   <main>
