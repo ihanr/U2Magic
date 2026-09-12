@@ -10,12 +10,16 @@ RUN cd /work \
     && zip -d app.jar \
         'BOOT-INF/classes/static/index.html' \
         'BOOT-INF/classes/static/addTorrent.html' \
-        'BOOT-INF/classes/com/khc/u2/Service/QbScheduleService.class' >/dev/null \
+        'BOOT-INF/classes/com/khc/u2/Service/QbScheduleService.class' \
+        'BOOT-INF/classes/com/khc/u2/Util/QbApiUtil.class' \
+        'BOOT-INF/classes/com/khc/u2/task/AutoAddSchedule.class' >/dev/null \
     && cd /work/overrides \
     && zip /work/app.jar \
         'BOOT-INF/classes/static/index.html' \
         'BOOT-INF/classes/static/addTorrent.html' \
-        'BOOT-INF/classes/com/khc/u2/Service/QbScheduleService.class'
+        'BOOT-INF/classes/com/khc/u2/Service/QbScheduleService.class' \
+        'BOOT-INF/classes/com/khc/u2/Util/QbApiUtil.class' \
+        'BOOT-INF/classes/com/khc/u2/task/AutoAddSchedule.class'
 
 FROM kuanghom/u2magic:latest
 COPY --from=patcher /work/app.jar /data/u2Magic/lib/app.jar
