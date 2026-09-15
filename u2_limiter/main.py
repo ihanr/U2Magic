@@ -29,6 +29,8 @@ def limiter_config(config):
         average_bps=int(config.get("average_mib_per_sec", 49)) * 1024 * 1024,
         safety_seconds=int(config.get("safety_seconds", 30)),
         reset_jump_seconds=int(config.get("reset_jump_seconds", 60)),
+        burst_bps=int(config.get("burst_mib_per_sec", 100)) * 1024 * 1024,
+        poll_seconds=int(config.get("poll_seconds", 15)),
     )
 
 
@@ -52,7 +54,8 @@ def load_config(path):
     if not 0 < int(config.get("average_mib_per_sec", 49)) < 50:
         raise ValueError("average_mib_per_sec must be below 50")
     for key, default in (("poll_seconds", 15), ("bootstrap_mib_per_sec", 45),
-                         ("safety_seconds", 30), ("reset_jump_seconds", 60)):
+                         ("safety_seconds", 30), ("reset_jump_seconds", 60),
+                         ("burst_mib_per_sec", 100)):
         if int(config.get(key, default)) <= 0:
             raise ValueError(f"{key} must be positive")
     return config

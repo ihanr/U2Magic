@@ -25,6 +25,7 @@ def test_countdown_jump_creates_a_cycle_baseline():
     assert result.reason == "announce-reset"
     assert result.state.baseline_uploaded == 11_000
     assert result.state.announce_interval == 1_810
+    assert result.limit_bps == 100 * MIB
 
 
 def test_budget_can_allow_an_instantaneous_limit_above_50_mib():
@@ -32,6 +33,12 @@ def test_budget_can_allow_an_instantaneous_limit_above_50_mib():
     result = decide(sample(reannounce=900, uploaded=0), previous, 1_020, Config())
     assert result.reason == "dynamic"
     assert result.limit_bps > 50 * MIB
+
+
+def test_frontload_never_exceeds_configured_100_mib_burst_cap():
+    previous = LimiterState(0, 1_795, 1_000, 1_810, -1, True)
+    result = decide(sample(reannounce=1_700, uploaded=0), previous, 1_020, Config())
+    assert result.limit_bps == 100 * MIB
 
 
 def test_exhausted_budget_uses_protective_floor():

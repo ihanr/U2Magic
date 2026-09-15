@@ -14,9 +14,10 @@ docker compose -f docker-compose.current-server.yml up --build
 
 The supplied compose file is dry-run only. Review the node counts, observed
 tracker hosts, and `reannounce` values, then add only those U2 hosts to
-`allowed_tracker_hosts`. `average_mib_per_sec: 49` is a cycle-average budget,
-not an instantaneous 49 MiB/s cap: calculated early-cycle limits can be
-higher. Until a complete announce cycle has been observed, or if a qB
+`allowed_tracker_hosts`. `average_mib_per_sec: 49` is a cycle-average budget.
+`burst_mib_per_sec: 100` is the per-torrent front-loaded cap: calculated
+early-cycle limits can reach 100 MiB/s, then fall as the cycle budget is used.
+Until a complete announce cycle has been observed, or if a qB
 properties request fails, the torrent stays at 45 MiB/s.
 
 Only after reviewing dry-run output, explicitly replace `--dry-run` with
