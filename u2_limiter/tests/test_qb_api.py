@@ -11,6 +11,17 @@ def test_limit_path_is_single_torrent_endpoint():
     assert client.limit_path() == "/api/v2/torrents/setUploadLimit"
 
 
+def test_properties_path_uses_one_torrent_hash_query():
+    client = QbClient({"name": "DE2", "host": "http://example.test", "username": "", "password": ""})
+    assert client.properties_path("a" * 40) == "/api/v2/torrents/properties?hash=" + "a" * 40
+
+
+def test_torrent_properties_returns_qb_announce_countdown_and_uploaded(monkeypatch):
+    client = QbClient({"name": "DE2", "host": "http://example.test", "username": "", "password": ""})
+    monkeypatch.setattr(client, "_request", lambda path, data=None: b'{"reannounce":224,"total_uploaded":123}')
+    assert client.torrent_properties("a" * 40) == {"reannounce": 224, "total_uploaded": 123}
+
+
 def test_next_announce_uses_matching_tracker_detail(monkeypatch):
     client = QbClient({"name": "DE2", "host": "http://example.test", "username": "", "password": ""})
     monkeypatch.setattr(client, "_request", lambda path, data=None: b'[{"url":"https://other.example/a","next_announce":1},{"url":"https://daydream.dmhy.best/a","next_announce":900}]')
