@@ -67,6 +67,7 @@ def run_once(clients, config, records, dry_run):
         node = getattr(client, "name", None) or client.node["name"]
         for row in filter_allowed(client.list_u2_torrents(), allowed):
             torrent_hash = row["hash"]
+            next_announce = client.next_announce(torrent_hash, row["tracker"])
             key = f"{node}/{torrent_hash}"
             record = records.get(key)
             previous = None if record is None else LimiterState(
@@ -74,7 +75,7 @@ def run_once(clients, config, records, dry_run):
                 record["announce_interval"], record["original_limit_bps"], record["owned"],
             )
             sample = TorrentSample(node, torrent_hash, "U2", urlparse(row["tracker"]).hostname or "",
-                                   int(row.get("uploaded", 0)), int(row.get("next_announce", 0)),
+                                   int(row.get("uploaded", 0)), next_announce,
                                    int(row.get("up_limit", -1)))
             decision = decide(sample, previous, 0, Config())
             if not dry_run:

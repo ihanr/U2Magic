@@ -39,5 +39,12 @@ class QbClient:
         data = urlencode({"hashes": torrent_hash, "limit": int(limit_bps)}).encode()
         self._request(self.limit_path(), data)
 
+    def next_announce(self, torrent_hash, tracker_url):
+        rows = json.loads(self._request("/api/v2/torrents/trackers?" + urlencode({"hash": torrent_hash})))
+        for row in rows:
+            if row.get("url") == tracker_url:
+                return max(0, int(row.get("next_announce", 0)))
+        return 0
+
     def tracker_host(self, torrent):
         return urlparse(torrent.get("tracker", "")).hostname or ""

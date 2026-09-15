@@ -43,7 +43,7 @@ def _cap(limit_bps: int, existing_bps: int) -> int:
 
 
 def decide(sample: TorrentSample, previous: LimiterState | None, now: int, config: Config) -> Decision:
-    if previous is None:
+    if previous is None or sample.next_announce <= 0:
         return Decision(
             _cap(config.bootstrap_bps, sample.upload_limit), "bootstrap",
             LimiterState(sample.uploaded, sample.next_announce, max(sample.next_announce, 1),
