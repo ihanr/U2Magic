@@ -23,17 +23,38 @@ def host_counts(rows):
     return dict(sorted(counts.items()))
 
 
-def announce_values(client, rows):
-    return {row["hash"]: client.next_announce(row["hash"], row["tracker"])
-            for row in rows if row.get("category") == "U2"}
+def limiter_config(config):
+    return Config(
+        bootstrap_bps=int(config.get("bootstrap_mib_per_sec", 45)) * 1024 * 1024,
+        average_bps=int(config.get("average_mib_per_sec", 49)) * 1024 * 1024,
+        safety_seconds=int(config.get("safety_seconds", 30)),
+        reset_jump_seconds=int(config.get("reset_jump_seconds", 60)),
+    )
+
+
+def reannounce_values(client, rows):
+    values = {}
+    failures = 0
+    for row in rows:
+        if row.get("category") != "U2":
+            continue
+        try:
+            values[row["hash"]] = max(0, int(client.torrent_properties(row["hash"]).get("reannounce", 0)))
+        except Exception:
+            failures += 1
+    return values, failures
 
 
 def load_config(path):
     config = json.loads(Path(path).read_text(encoding="utf-8"))
     if not config.get("nodes"):
         raise ValueError("nodes must be non-empty")
-    if config.get("target_mib_per_sec", 49) >= 50:
-        raise ValueError("target_mib_per_sec must be below 50")
+    if not 0 < int(config.get("average_mib_per_sec", 49)) < 50:
+        raise ValueError("average_mib_per_sec must be below 50")
+    for key, default in (("poll_seconds", 15), ("bootstrap_mib_per_sec", 45),
+                         ("safety_seconds", 30), ("reset_jump_seconds", 60)):
+        if int(config.get(key, default)) <= 0:
+            raise ValueError(f"{key} must be positive")
     return config
 
 
@@ -66,30 +87,39 @@ def release_state(clients, records):
     return remaining
 
 
-def run_once(clients, config, records, dry_run):
+def run_once(clients, config, records, dry_run, now=None):
+    now = int(time.time()) if now is None else now
     allowed = set(config.get("allowed_tracker_hosts", []))
+    limits = limiter_config(config)
     for client in clients:
         node = getattr(client, "name", None) or client.node["name"]
         for row in filter_allowed(client.list_u2_torrents(), allowed):
             torrent_hash = row["hash"]
-            next_announce = client.next_announce(torrent_hash, row["tracker"])
+            try:
+                properties = client.torrent_properties(torrent_hash)
+                reannounce = max(0, int(properties.get("reannounce", 0)))
+                uploaded = int(properties.get("total_uploaded", row.get("uploaded", 0)))
+            except Exception:
+                reannounce = 0
+                uploaded = int(row.get("uploaded", 0))
             key = f"{node}/{torrent_hash}"
             record = records.get(key)
-            previous = None if record is None else LimiterState(
-                record["baseline_uploaded"], record["previous_next_announce"],
+            previous = None if record is None or "observed_at" not in record else LimiterState(
+                record["baseline_uploaded"], record["previous_reannounce"], record["observed_at"],
                 record["announce_interval"], record["original_limit_bps"], record["owned"],
             )
             sample = TorrentSample(node, torrent_hash, "U2", urlparse(row["tracker"]).hostname or "",
-                                   int(row.get("uploaded", 0)), next_announce,
+                                   uploaded, reannounce,
                                    int(row.get("up_limit", -1)))
-            decision = decide(sample, previous, 0, Config())
+            decision = decide(sample, previous, now, limits)
             if not dry_run:
                 client.set_upload_limit(torrent_hash, decision.limit_bps)
                 state = decision.state
                 records[key] = {"node": node, "hash": torrent_hash, "owned": True,
                                 "original_limit_bps": state.original_limit_bps,
                                 "baseline_uploaded": state.baseline_uploaded,
-                                "previous_next_announce": state.previous_next_announce,
+                                "previous_reannounce": state.previous_reannounce,
+                                "observed_at": state.observed_at,
                                 "announce_interval": state.announce_interval}
     return records
 
@@ -99,10 +129,12 @@ def dry_run(config):
     for node in config["nodes"]:
         client = QbClient(node)
         rows = client.list_u2_torrents()
+        reannounce, failures = reannounce_values(client, rows)
         print(json.dumps({"node": node["name"], "u2_category": len(rows),
                           "tracker_hosts": host_counts(rows),
-                          "next_announce": announce_values(client, rows),
-                          "allowed": len(filter_allowed(rows, allowed))}))
+                          "reannounce": reannounce,
+                          "allowed": len(filter_allowed(rows, allowed)),
+                          "properties_failures": failures}))
 
 
 def cli():

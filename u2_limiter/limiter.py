@@ -54,8 +54,10 @@ def _bootstrap(sample: TorrentSample, previous: LimiterState | None, now: int, c
 
 
 def decide(sample: TorrentSample, previous: LimiterState | None, now: int, config: Config) -> Decision:
-    if previous is None or sample.reannounce <= 0:
+    if previous is None:
         return _bootstrap(sample, previous, now, config, "bootstrap")
+    if sample.reannounce <= 0:
+        return Decision(_limit(config.bootstrap_bps, previous.original_limit_bps), "bootstrap", previous)
     reset = sample.reannounce > previous.previous_reannounce + config.reset_jump_seconds
     if reset:
         interval = previous.previous_reannounce + max(0, now - previous.observed_at) + sample.reannounce

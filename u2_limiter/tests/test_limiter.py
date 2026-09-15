@@ -40,6 +40,13 @@ def test_exhausted_budget_uses_protective_floor():
     assert result.limit_bps == Config().floor_bps
 
 
+def test_invalid_countdown_keeps_the_verified_cycle_state():
+    previous = LimiterState(10_000, 900, 1_000, 1_800, -1, True)
+    result = decide(sample(reannounce=0, uploaded=11_000), previous, 1_010, Config())
+    assert result.reason == "bootstrap"
+    assert result.state == previous
+
+
 def test_finite_original_limit_remains_when_lower_than_budget_limit():
     previous = LimiterState(0, 1_000, 1_000, 1_800, 20 * MIB, True)
     assert decide(sample(reannounce=900, uploaded=0), previous, 1_010, Config()).limit_bps == 20 * MIB
