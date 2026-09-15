@@ -1,4 +1,4 @@
-from main import filter_allowed, load_state, release_state, run_once, save_state
+from main import filter_allowed, host_counts, load_state, release_state, run_once, save_state
 from pathlib import Path
 
 
@@ -9,6 +9,13 @@ def test_only_exact_category_and_allowed_tracker_are_selected():
         {"category": "Other", "tracker": "https://u2.dmhy.org/a"},
     ]
     assert filter_allowed(rows, {"u2.dmhy.org"}) == [rows[0]]
+
+
+def test_host_counts_reports_u2_category_tracker_hosts():
+    rows = [{"category": "U2", "tracker": "https://u2.dmhy.org/a"},
+            {"category": "U2", "tracker": "https://u2.dmhy.org/b"},
+            {"category": "U2", "tracker": "https://other.example/a"}]
+    assert host_counts(rows) == {"other.example": 1, "u2.dmhy.org": 2}
 
 
 def test_state_round_trip_is_atomic(tmp_path):
