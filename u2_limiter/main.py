@@ -14,10 +14,19 @@ def filter_allowed(rows, allowed_hosts):
             and (urlparse(row.get("tracker", "")).hostname or "") in allowed_hosts]
 
 
+def host_counts(rows):
+    counts = {}
+    for row in rows:
+        if row.get("category") == "U2":
+            host = urlparse(row.get("tracker", "")).hostname or "(missing)"
+            counts[host] = counts.get(host, 0) + 1
+    return dict(sorted(counts.items()))
+
+
 def load_config(path):
     config = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not config.get("nodes") or not config.get("allowed_tracker_hosts"):
-        raise ValueError("nodes and allowed_tracker_hosts must be non-empty")
+    if not config.get("nodes"):
+        raise ValueError("nodes must be non-empty")
     if config.get("target_mib_per_sec", 49) >= 50:
         raise ValueError("target_mib_per_sec must be below 50")
     return config
@@ -53,7 +62,7 @@ def release_state(clients, records):
 
 
 def run_once(clients, config, records, dry_run):
-    allowed = set(config["allowed_tracker_hosts"])
+    allowed = set(config.get("allowed_tracker_hosts", []))
     for client in clients:
         node = getattr(client, "name", None) or client.node["name"]
         for row in filter_allowed(client.list_u2_torrents(), allowed):
@@ -80,10 +89,11 @@ def run_once(clients, config, records, dry_run):
 
 
 def dry_run(config):
-    allowed = set(config["allowed_tracker_hosts"])
+    allowed = set(config.get("allowed_tracker_hosts", []))
     for node in config["nodes"]:
         rows = QbClient(node).list_u2_torrents()
         print(json.dumps({"node": node["name"], "u2_category": len(rows),
+                          "tracker_hosts": host_counts(rows),
                           "allowed": len(filter_allowed(rows, allowed))}))
 
 
