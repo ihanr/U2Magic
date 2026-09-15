@@ -1,6 +1,7 @@
 .env
 **/__pycache__/
 *.py[cod]
+.worktrees/
 
 # Local runtime data and credentials
 runtime/
