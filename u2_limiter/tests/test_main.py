@@ -1,4 +1,4 @@
-from main import filter_allowed, load_state, release_state, save_state
+from main import filter_allowed, load_state, release_state, run_once, save_state
 from pathlib import Path
 
 
@@ -27,3 +27,17 @@ def test_release_restores_only_owned_records():
                "DE2/b": {"node": "DE2", "hash": "b", "owned": False, "original_limit_bps": 8}}
     assert release_state({"DE2": client}, records) == {"DE2/b": records["DE2/b"]}
     assert client.calls == [("a", 9)]
+
+
+def test_run_once_writes_only_allowed_u2_and_records_ownership(tmp_path):
+    class Client:
+        name = "DE2"
+        def __init__(self): self.calls = []
+        def list_u2_torrents(self):
+            return [{"hash": "a", "category": "U2", "tracker": "https://u2.dmhy.org/a",
+                     "uploaded": 0, "up_limit": -1, "next_announce": 1800}]
+        def set_upload_limit(self, torrent_hash, limit_bps): self.calls.append((torrent_hash, limit_bps))
+    client = Client()
+    state = run_once([client], {"allowed_tracker_hosts": ["u2.dmhy.org"]}, {}, dry_run=False)
+    assert client.calls == [("a", 45 * 1024 * 1024)]
+    assert state["DE2/a"]["owned"] is True

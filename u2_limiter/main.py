@@ -5,6 +5,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from qb_api import QbClient
+from limiter import Config, LimiterState, TorrentSample, decide
 
 
 def filter_allowed(rows, allowed_hosts):
@@ -48,6 +49,33 @@ def release_state(clients, records):
         except Exception:
             remaining[key] = record
     return remaining
+
+
+def run_once(clients, config, records, dry_run):
+    allowed = set(config["allowed_tracker_hosts"])
+    for client in clients:
+        node = getattr(client, "name", None) or client.node["name"]
+        for row in filter_allowed(client.list_u2_torrents(), allowed):
+            torrent_hash = row["hash"]
+            key = f"{node}/{torrent_hash}"
+            record = records.get(key)
+            previous = None if record is None else LimiterState(
+                record["baseline_uploaded"], record["previous_next_announce"],
+                record["announce_interval"], record["original_limit_bps"], record["owned"],
+            )
+            sample = TorrentSample(node, torrent_hash, "U2", urlparse(row["tracker"]).hostname or "",
+                                   int(row.get("uploaded", 0)), int(row.get("next_announce", 0)),
+                                   int(row.get("up_limit", -1)))
+            decision = decide(sample, previous, 0, Config())
+            if not dry_run:
+                client.set_upload_limit(torrent_hash, decision.limit_bps)
+                state = decision.state
+                records[key] = {"node": node, "hash": torrent_hash, "owned": True,
+                                "original_limit_bps": state.original_limit_bps,
+                                "baseline_uploaded": state.baseline_uploaded,
+                                "previous_next_announce": state.previous_next_announce,
+                                "announce_interval": state.announce_interval}
+    return records
 
 
 def dry_run(config):
