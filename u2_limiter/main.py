@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -89,12 +90,24 @@ def dry_run(config):
 def cli():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
+    parser.add_argument("--state", default="/runtime/state.json")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--write", action="store_true")
+    parser.add_argument("--release-managed-limits", action="store_true")
     args = parser.parse_args()
     config = load_config(args.config)
-    if not args.dry_run:
-        raise SystemExit("write mode is not enabled until preflight is reviewed")
-    dry_run(config)
+    clients = [QbClient(node) for node in config["nodes"]]
+    if args.release_managed_limits:
+        save_state(args.state, release_state({client.node["name"]: client for client in clients}, load_state(args.state)))
+        return
+    if args.dry_run:
+        dry_run(config)
+        return
+    if not args.write:
+        raise SystemExit("use --dry-run or explicit --write")
+    while True:
+        save_state(args.state, run_once(clients, config, load_state(args.state), dry_run=False))
+        time.sleep(int(config.get("poll_seconds", 15)))
 
 
 if __name__ == "__main__":
