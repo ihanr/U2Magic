@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -18,6 +19,35 @@ def load_config(path):
     if config.get("target_mib_per_sec", 49) >= 50:
         raise ValueError("target_mib_per_sec must be below 50")
     return config
+
+
+def load_state(path):
+    state_path = Path(path)
+    return json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+
+
+def save_state(path, state):
+    state_path = Path(path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(str(state_path) + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        json.dump(state, handle, ensure_ascii=False, sort_keys=True)
+        handle.flush()
+        os.fsync(handle.fileno())
+    temporary.replace(state_path)
+
+
+def release_state(clients, records):
+    remaining = {}
+    for key, record in records.items():
+        if not record.get("owned"):
+            remaining[key] = record
+            continue
+        try:
+            clients[record["node"]].set_upload_limit(record["hash"], record["original_limit_bps"])
+        except Exception:
+            remaining[key] = record
+    return remaining
 
 
 def dry_run(config):
