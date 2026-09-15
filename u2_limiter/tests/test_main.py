@@ -1,4 +1,4 @@
-from main import filter_allowed, host_counts, load_state, release_state, run_once, save_state
+from main import announce_values, filter_allowed, host_counts, load_state, release_state, run_once, save_state
 from pathlib import Path
 
 
@@ -16,6 +16,13 @@ def test_host_counts_reports_u2_category_tracker_hosts():
             {"category": "U2", "tracker": "https://u2.dmhy.org/b"},
             {"category": "U2", "tracker": "https://other.example/a"}]
     assert host_counts(rows) == {"other.example": 1, "u2.dmhy.org": 2}
+
+
+def test_announce_values_reads_each_u2_torrent():
+    class Client:
+        def next_announce(self, torrent_hash, tracker): return 900
+    rows = [{"hash": "a", "category": "U2", "tracker": "https://u2.dmhy.org/a"}]
+    assert announce_values(Client(), rows) == {"a": 900}
 
 
 def test_state_round_trip_is_atomic(tmp_path):

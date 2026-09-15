@@ -23,6 +23,11 @@ def host_counts(rows):
     return dict(sorted(counts.items()))
 
 
+def announce_values(client, rows):
+    return {row["hash"]: client.next_announce(row["hash"], row["tracker"])
+            for row in rows if row.get("category") == "U2"}
+
+
 def load_config(path):
     config = json.loads(Path(path).read_text(encoding="utf-8"))
     if not config.get("nodes"):
@@ -92,9 +97,11 @@ def run_once(clients, config, records, dry_run):
 def dry_run(config):
     allowed = set(config.get("allowed_tracker_hosts", []))
     for node in config["nodes"]:
-        rows = QbClient(node).list_u2_torrents()
+        client = QbClient(node)
+        rows = client.list_u2_torrents()
         print(json.dumps({"node": node["name"], "u2_category": len(rows),
                           "tracker_hosts": host_counts(rows),
+                          "next_announce": announce_values(client, rows),
                           "allowed": len(filter_allowed(rows, allowed))}))
 
 
