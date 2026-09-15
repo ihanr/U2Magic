@@ -43,6 +43,7 @@ def test_run_once_writes_only_allowed_u2_and_records_ownership(tmp_path):
         def list_u2_torrents(self):
             return [{"hash": "a", "category": "U2", "tracker": "https://u2.dmhy.org/a",
                      "uploaded": 0, "up_limit": -1, "next_announce": 1800}]
+        def next_announce(self, torrent_hash, tracker): return 1800
         def set_upload_limit(self, torrent_hash, limit_bps): self.calls.append((torrent_hash, limit_bps))
     client = Client()
     state = run_once([client], {"allowed_tracker_hosts": ["u2.dmhy.org"]}, {}, dry_run=False)
