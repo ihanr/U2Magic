@@ -9,6 +9,10 @@ from qb_api import QbClient
 from limiter import Config, LimiterState, TorrentSample, decide
 
 
+HOLD_PREFIX = "U2LimitHoldUntil-"
+HOLD_TTL_SECONDS = 90
+
+
 def filter_allowed(rows, allowed_hosts):
     return [row for row in rows if row.get("category") == "U2"
             and (urlparse(row.get("tracker", "")).hostname or "") in allowed_hosts]
@@ -21,6 +25,25 @@ def host_counts(rows):
             host = urlparse(row.get("tracker", "")).hostname or "(missing)"
             counts[host] = counts.get(host, 0) + 1
     return dict(sorted(counts.items()))
+
+
+def hold_tags(row):
+    return [tag for tag in row.get("tags", "").split(",") if tag.startswith(HOLD_PREFIX)]
+
+
+def refresh_hold_tag(client, row, now):
+    torrent_hash = row["hash"]
+    tag = f"{HOLD_PREFIX}{now + HOLD_TTL_SECONDS}"
+    client.add_tags(torrent_hash, tag)
+    stale = [item for item in hold_tags(row) if item != tag]
+    if stale:
+        client.remove_tags(torrent_hash, ",".join(stale))
+
+
+def clear_hold_tags(client, row):
+    tags = hold_tags(row)
+    if tags:
+        client.remove_tags(row["hash"], ",".join(tags))
 
 
 def limiter_config(config):
@@ -116,7 +139,14 @@ def run_once(clients, config, records, dry_run, now=None):
                                    int(row.get("up_limit", -1)))
             decision = decide(sample, previous, now, limits)
             if not dry_run:
-                client.set_upload_limit(torrent_hash, decision.limit_bps)
+                original = decision.state.original_limit_bps
+                holding = decision.reason == "dynamic" and (original < 0 or decision.limit_bps < original)
+                if holding:
+                    refresh_hold_tag(client, row, now)
+                    client.set_upload_limit(torrent_hash, decision.limit_bps)
+                else:
+                    client.set_upload_limit(torrent_hash, decision.limit_bps)
+                    clear_hold_tags(client, row)
                 state = decision.state
                 records[key] = {"node": node, "hash": torrent_hash, "owned": True,
                                 "original_limit_bps": state.original_limit_bps,

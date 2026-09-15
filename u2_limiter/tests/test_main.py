@@ -79,3 +79,25 @@ def test_run_once_bootstraps_when_properties_fail():
     client = Client()
     run_once([client], {"allowed_tracker_hosts": ["daydream.dmhy.best"]}, {}, dry_run=False, now=1000)
     assert client.calls == [("a", 45 * 1024 * 1024)]
+
+
+def test_budget_limited_torrent_gets_expiring_hold_tag_before_limit_change():
+    class Client:
+        name = "DE1"
+        def __init__(self): self.calls = []
+        def list_u2_torrents(self):
+            return [{"hash": "a", "category": "U2", "tracker": "https://daydream.dmhy.best/a",
+                     "uploaded": 0, "up_limit": 100 * 1024 * 1024, "tags": "keep,U2LimitHoldUntil-10"}]
+        def torrent_properties(self, torrent_hash):
+            return {"reannounce": 600, "total_uploaded": 49 * 1024 * 1024 * 1800}
+        def add_tags(self, torrent_hash, tags): self.calls.append(("add", torrent_hash, tags))
+        def remove_tags(self, torrent_hash, tags): self.calls.append(("remove", torrent_hash, tags))
+        def set_upload_limit(self, torrent_hash, limit_bps): self.calls.append(("limit", torrent_hash, limit_bps))
+    client = Client()
+    records = {"DE1/a": {"node": "DE1", "hash": "a", "owned": True,
+               "original_limit_bps": 100 * 1024 * 1024, "baseline_uploaded": 0,
+               "previous_reannounce": 1000, "observed_at": 990, "announce_interval": 1800}}
+    run_once([client], {"allowed_tracker_hosts": ["daydream.dmhy.best"]}, records, dry_run=False, now=1000)
+    assert client.calls[0] == ("add", "a", "U2LimitHoldUntil-1090")
+    assert client.calls[1] == ("remove", "a", "U2LimitHoldUntil-10")
+    assert client.calls[2][0] == "limit"

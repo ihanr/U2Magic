@@ -43,6 +43,14 @@ class QbClient:
         data = urlencode({"hashes": torrent_hash, "limit": int(limit_bps)}).encode()
         self._request(self.limit_path(), data)
 
+    def add_tags(self, torrent_hash, tags):
+        data = urlencode({"hashes": torrent_hash, "tags": tags}).encode()
+        self._request("/api/v2/torrents/addTags", data)
+
+    def remove_tags(self, torrent_hash, tags):
+        data = urlencode({"hashes": torrent_hash, "tags": tags}).encode()
+        self._request("/api/v2/torrents/removeTags", data)
+
     def torrent_properties(self, torrent_hash):
         return json.loads(self._request(self.properties_path(torrent_hash)))
 
