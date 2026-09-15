@@ -1,0 +1,8 @@
+services:
+  u2-limiter:
+    build: .
+    container_name: u2-limiter
+    restart: unless-stopped
+    volumes:
+      - /opt/u2magic/runtime/limiter:/runtime
+    command: ["--config", "/runtime/config.json", "--dry-run"]
