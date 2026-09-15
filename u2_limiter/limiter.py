@@ -10,6 +10,8 @@ class Config:
     average_bps: int = 49 * MIB
     safety_seconds: int = 30
     reset_jump_seconds: int = 60
+    burst_bps: int = 100 * MIB
+    poll_seconds: int = 15
     floor_bps: int = 1024
 
 
@@ -53,6 +55,15 @@ def _bootstrap(sample: TorrentSample, previous: LimiterState | None, now: int, c
     )
 
 
+def _frontload_limit(sample: TorrentSample, state: LimiterState, config: Config) -> int:
+    used = max(0, sample.uploaded - state.baseline_uploaded)
+    budget = config.average_bps * max(0, state.announce_interval - config.safety_seconds) - used
+    future_seconds = max(0, sample.reannounce - config.poll_seconds)
+    available_now = budget - config.floor_bps * future_seconds
+    candidate = max(config.floor_bps, available_now // config.poll_seconds)
+    return _limit(min(config.burst_bps, candidate), state.original_limit_bps)
+
+
 def decide(sample: TorrentSample, previous: LimiterState | None, now: int, config: Config) -> Decision:
     if previous is None:
         return _bootstrap(sample, previous, now, config, "bootstrap")
@@ -61,18 +72,16 @@ def decide(sample: TorrentSample, previous: LimiterState | None, now: int, confi
     reset = sample.reannounce > previous.previous_reannounce + config.reset_jump_seconds
     if reset:
         interval = previous.previous_reannounce + max(0, now - previous.observed_at) + sample.reannounce
+        state = LimiterState(sample.uploaded, sample.reannounce, now, interval,
+                             previous.original_limit_bps, True)
         return Decision(
-            _limit(config.bootstrap_bps, previous.original_limit_bps), "announce-reset",
-            LimiterState(sample.uploaded, sample.reannounce, now, interval,
-                         previous.original_limit_bps, True),
+            _frontload_limit(sample, state, config), "announce-reset", state,
         )
     if previous.announce_interval <= 0 or sample.uploaded < previous.baseline_uploaded:
         return _bootstrap(sample, previous, now, config, "bootstrap")
-    used = max(0, sample.uploaded - previous.baseline_uploaded)
-    budget = config.average_bps * max(0, previous.announce_interval - config.safety_seconds) - used
-    cap = max(config.floor_bps, budget // max(1, sample.reannounce + config.safety_seconds))
+    cap = _frontload_limit(sample, previous, config)
     return Decision(
-        _limit(cap, previous.original_limit_bps), "dynamic",
+        cap, "dynamic",
         LimiterState(previous.baseline_uploaded, sample.reannounce, now, previous.announce_interval,
                      previous.original_limit_bps, True),
     )
