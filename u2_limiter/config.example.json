@@ -1,7 +1,9 @@
 {
   "poll_seconds": 15,
   "bootstrap_mib_per_sec": 45,
-  "target_mib_per_sec": 49,
+  "average_mib_per_sec": 49,
+  "safety_seconds": 30,
+  "reset_jump_seconds": 60,
   "allowed_tracker_hosts": ["u2.dmhy.org"],
   "nodes": [
     {"name": "DE2", "host": "http://127.0.0.1:9091", "username": "", "password": ""}

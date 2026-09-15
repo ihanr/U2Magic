@@ -18,6 +18,10 @@ class QbClient:
     def limit_path():
         return "/api/v2/torrents/setUploadLimit"
 
+    @staticmethod
+    def properties_path(torrent_hash):
+        return "/api/v2/torrents/properties?" + urlencode({"hash": torrent_hash})
+
     def _request(self, path, data=None):
         request = Request(self.base + path, data=data)
         with self.opener.open(request, timeout=10) as response:
@@ -39,12 +43,8 @@ class QbClient:
         data = urlencode({"hashes": torrent_hash, "limit": int(limit_bps)}).encode()
         self._request(self.limit_path(), data)
 
-    def next_announce(self, torrent_hash, tracker_url):
-        rows = json.loads(self._request("/api/v2/torrents/trackers?" + urlencode({"hash": torrent_hash})))
-        for row in rows:
-            if row.get("url") == tracker_url:
-                return max(0, int(row.get("next_announce", 0)))
-        return 0
+    def torrent_properties(self, torrent_hash):
+        return json.loads(self._request(self.properties_path(torrent_hash)))
 
     def tracker_host(self, torrent):
         return urlparse(torrent.get("tracker", "")).hostname or ""
