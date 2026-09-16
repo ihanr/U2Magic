@@ -35,3 +35,15 @@ def test_idle_period_does_not_discard_the_first_new_promotion():
 
     assert "l4 != null && l2 > 300000L" not in source
     assert "已重置执行标记，本次跳过" not in source
+
+
+def test_per_torrent_upload_limit_is_not_used_to_reject_a_busy_node():
+    source = SOURCE.read_text(encoding="utf-8")
+    filter_node = source[
+        source.index("private boolean filterNode"):
+        source.index("public AutoAddSchedule")
+    ]
+
+    assert "qbNode.getUpSpeed()" not in filter_node
+    assert "qbNode.getUploadLimit()" not in filter_node
+    assert "qbNode.setUploadLimit" in source

@@ -338,12 +338,6 @@ public class AutoAddSchedule {
                 return false;
             }
         }
-        Long uploadLimit = (Long)ObjUtil.defaultIfNull((Object)qbNode.getUploadLimit(), (Object)qbittorrentProperties.getGlobal().getUploadLimit());
-        Long l = (Long)ObjUtil.defaultIfNull((Object)qbNode.getUpSpeed(), (Object)0L);
-        if (l > uploadLimit) {
-            log.warn("\u8282\u70b9 {} \u5f53\u524d\u4e0a\u4f20\u901f\u5ea6:{} MB/s, \u8d85\u8fc7\u6700\u5927\u4e0a\u4f20\u901f\u5ea6[{} b]\u9650\u5236, \u8df3\u8fc7", new Object[]{qbNode.getName(), l / 1024L / 1024L, uploadLimit});
-            return false;
-        }
         Long maxTorrentSpeedLimit = (Long)ObjUtil.defaultIfNull((Object)qbNode.getMaxTorrentSpeedLimit(), (Object)qbittorrentProperties.getGlobal().getMaxTorrentSpeedLimit());
         if (qbNode.getDownSpeed() > maxTorrentSpeedLimit) {
             log.warn("\u8282\u70b9 {} \u5f53\u524d\u4e0b\u8f7d\u901f\u5ea6:{} MB/s, \u8d85\u8fc7\u6700\u5927\u4e0b\u8f7d\u901f\u5ea6[{}]\u9650\u5236, \u8df3\u8fc7", new Object[]{qbNode.getName(), qbNode.getDownSpeed() / 1024L / 1024L, maxTorrentSpeedLimit});
