@@ -98,7 +98,6 @@ public class AutoAddSchedule {
         log.info("\n========== \u5f00\u59cb\u81ea\u52a8\u626b\u63cfU2\u9b54\u6cd5\u79cd\u5b50\u4fe1\u606f ===========");
         log.info("\u914d\u7f6e\u4fe1\u606f: \n \u79cd\u5b50\u4fe1\u606f: \u6700\u5c0f\u4e0a\u4f20\u500d\u7387:{}, \u6700\u5927\u4e0b\u8f7d\u500d\u7387:{}, \u79cd\u5b50\u5927\u5c0f\u533a\u95f4:[{}GB ~ {}GB], \u6700\u5927\u505a\u79cd\u4eba\u6570:{}, QB\u4efb\u52a1\u6570\u9650\u5236:{}, \u5168\u5c40\u5206\u7c7b\u6700\u5927\u4efb\u52a1\u6570:{}, \u914d\u7f6e\u7684qb\u8282\u70b9: \n{} ", new Object[]{businessProperties.getUpRate(), businessProperties.getDownRate(), NumberUtil.div((double)businessProperties.getTorrentMinSize().longValue(), (float)1.0737418E9f, (int)2), NumberUtil.div((double)businessProperties.getTorrentMaxSize().longValue(), (float)1.0737418E9f, (int)2), businessProperties.getSeeders(), khcProperties.getQbittorrent().getGlobal().getMaxTorrentSizeLimit(), khcProperties.getQbittorrent().getGlobal().getCategoryLimits(), khcProperties.getQbittorrent().getNodes().stream().filter(KhcProperties.QbittorrentProperties.QbNodeProperties::isEnabled).map(qbNodeProperties -> String.format("%s: %s", qbNodeProperties.getName(), qbNodeProperties.getHost())).collect(Collectors.joining("\n"))});
         try {
-            long l2;
             this.retryPendingPromotions(khcProperties);
             List<PromotionItem> list = this.u2Service.getPromotionItems();
             if (CollUtil.isEmpty((Collection)list)) {
@@ -106,19 +105,11 @@ public class AutoAddSchedule {
                 return;
             }
             Long l3 = (Long)this.fileDatabase.get(LAST_PROMOTION_ID_KEY, Long.class);
-            Long l4 = (Long)this.fileDatabase.get(LAST_EXECUTE_TIME_KEY, Long.class);
             if (ObjUtil.isNull((Object)l3)) {
                 Long l5 = list.get(0).getPromotionId();
                 this.fileDatabase.put(LAST_PROMOTION_ID_KEY, (Object)l5);
                 this.fileDatabase.put(LAST_EXECUTE_TIME_KEY, (Object)l);
                 log.info("\u67e5\u8be2\u4e0d\u5230\u5386\u53f2promotionId, \u8bb0\u5f55\u672c\u6b21promotionId==>{}\uff01 \u672c\u6b21\u6267\u884c\u8df3\u8fc7", (Object)l5);
-                return;
-            }
-            long l6 = l2 = ObjUtil.isNull((Object)l4) ? 0L : Math.abs(l - l4);
-            if (l4 != null && l2 > 300000L) {
-                this.fileDatabase.put(LAST_PROMOTION_ID_KEY, (Object)list.get(0).getPromotionId());
-                this.fileDatabase.put(LAST_EXECUTE_TIME_KEY, (Object)l);
-                log.info("\u4e0e\u4e0a\u6b21\u6210\u529f\u6267\u884c\u95f4\u9694\u8d85\u8fc75\u5206\u949f\uff0c\u5df2\u91cd\u7f6e\u6267\u884c\u6807\u8bb0\uff0c\u672c\u6b21\u8df3\u8fc7\uff01");
                 return;
             }
             Long l7 = list.get(0).getPromotionId();

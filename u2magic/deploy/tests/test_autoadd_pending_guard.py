@@ -28,3 +28,10 @@ def test_pending_queue_is_retried_even_when_there_are_no_new_promotions():
 
     assert "private void retryPendingPromotions(KhcProperties khcProperties)" in source
     assert source.index("this.retryPendingPromotions(khcProperties);") < source.index("List<PromotionItem> list = this.u2Service.getPromotionItems();")
+
+
+def test_idle_period_does_not_discard_the_first_new_promotion():
+    source = SOURCE.read_text(encoding="utf-8")
+
+    assert "l4 != null && l2 > 300000L" not in source
+    assert "已重置执行标记，本次跳过" not in source
