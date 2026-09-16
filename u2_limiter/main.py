@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -10,7 +11,7 @@ from limiter import Config, LimiterState, TorrentSample, decide
 
 
 HOLD_PREFIX = "U2LimitHoldUntil-"
-HOLD_TTL_SECONDS = 90
+HOLD_TTL_SECONDS = 300
 
 
 def filter_allowed(rows, allowed_hosts):
@@ -31,9 +32,8 @@ def hold_tags(row):
     return [tag for tag in row.get("tags", "").split(",") if tag.startswith(HOLD_PREFIX)]
 
 
-def refresh_hold_tag(client, row, now):
+def refresh_hold_tag(client, row, tag):
     torrent_hash = row["hash"]
-    tag = f"{HOLD_PREFIX}{now + HOLD_TTL_SECONDS}"
     client.add_tags(torrent_hash, tag)
     stale = [item for item in hold_tags(row) if item != tag]
     if stale:
@@ -44,6 +44,26 @@ def clear_hold_tags(client, row):
     tags = hold_tags(row)
     if tags:
         client.remove_tags(row["hash"], ",".join(tags))
+
+
+def record_from_state(node, torrent_hash, state, hold_tag=None):
+    record = {"node": node, "hash": torrent_hash, "owned": True,
+              "original_limit_bps": state.original_limit_bps,
+              "baseline_uploaded": state.baseline_uploaded,
+              "previous_reannounce": state.previous_reannounce,
+              "observed_at": state.observed_at,
+              "announce_interval": state.announce_interval}
+    if hold_tag:
+        record["hold_tag"] = hold_tag
+    return record
+
+
+def restore_unmanaged(client, record, row):
+    client.set_upload_limit(record["hash"], record["original_limit_bps"])
+    if row:
+        clear_hold_tags(client, row)
+    elif record.get("hold_tag"):
+        client.remove_tags(record["hash"], record["hold_tag"])
 
 
 def limiter_config(config):
@@ -113,21 +133,41 @@ def release_state(clients, records):
     return remaining
 
 
-def run_once(clients, config, records, dry_run, now=None):
+def run_once(clients, config, records, dry_run, now=None, checkpoint=None):
     now = int(time.time()) if now is None else now
+    checkpoint = checkpoint or (lambda state: None)
     allowed = set(config.get("allowed_tracker_hosts", []))
     limits = limiter_config(config)
     for client in clients:
         node = getattr(client, "name", None) or client.node["name"]
-        for row in filter_allowed(client.list_u2_torrents(), allowed):
+        try:
+            rows = client.list_u2_torrents()
+        except Exception as error:
+            print(f"node={node} list_u2_torrents_failed={type(error).__name__}", file=sys.stderr)
+            continue
+        selected = filter_allowed(rows, allowed)
+        selected_hashes = {row["hash"] for row in selected}
+        rows_by_hash = {row["hash"]: row for row in rows}
+        for key, record in list(records.items()):
+            if record.get("node") != node or record.get("hash") in selected_hashes:
+                continue
+            if dry_run:
+                continue
+            try:
+                restore_unmanaged(client, record, rows_by_hash.get(record["hash"]))
+                del records[key]
+                checkpoint(records)
+            except Exception as error:
+                print(f"node={node} hash={record['hash']} restore_failed={type(error).__name__}", file=sys.stderr)
+        for row in selected:
             torrent_hash = row["hash"]
             try:
                 properties = client.torrent_properties(torrent_hash)
                 reannounce = max(0, int(properties.get("reannounce", 0)))
                 uploaded = int(properties.get("total_uploaded", row.get("uploaded", 0)))
-            except Exception:
-                reannounce = 0
-                uploaded = int(row.get("uploaded", 0))
+            except Exception as error:
+                print(f"node={node} hash={torrent_hash} properties_failed={type(error).__name__}", file=sys.stderr)
+                continue
             key = f"{node}/{torrent_hash}"
             record = records.get(key)
             previous = None if record is None or "observed_at" not in record else LimiterState(
@@ -141,19 +181,18 @@ def run_once(clients, config, records, dry_run, now=None):
             if not dry_run:
                 original = decision.state.original_limit_bps
                 holding = decision.reason == "dynamic" and (original < 0 or decision.limit_bps < original)
-                if holding:
-                    refresh_hold_tag(client, row, now)
-                    client.set_upload_limit(torrent_hash, decision.limit_bps)
-                else:
-                    client.set_upload_limit(torrent_hash, decision.limit_bps)
-                    clear_hold_tags(client, row)
-                state = decision.state
-                records[key] = {"node": node, "hash": torrent_hash, "owned": True,
-                                "original_limit_bps": state.original_limit_bps,
-                                "baseline_uploaded": state.baseline_uploaded,
-                                "previous_reannounce": state.previous_reannounce,
-                                "observed_at": state.observed_at,
-                                "announce_interval": state.announce_interval}
+                hold_tag = f"{HOLD_PREFIX}{now + HOLD_TTL_SECONDS}" if holding else None
+                records[key] = record_from_state(node, torrent_hash, decision.state, hold_tag)
+                checkpoint(records)
+                try:
+                    if holding:
+                        refresh_hold_tag(client, row, hold_tag)
+                        client.set_upload_limit(torrent_hash, decision.limit_bps)
+                    else:
+                        client.set_upload_limit(torrent_hash, decision.limit_bps)
+                        clear_hold_tags(client, row)
+                except Exception as error:
+                    print(f"node={node} hash={torrent_hash} apply_failed={type(error).__name__}", file=sys.stderr)
     return records
 
 
@@ -189,7 +228,9 @@ def cli():
     if not args.write:
         raise SystemExit("use --dry-run or explicit --write")
     while True:
-        save_state(args.state, run_once(clients, config, load_state(args.state), dry_run=False))
+        records = load_state(args.state)
+        save_state(args.state, run_once(clients, config, records, dry_run=False,
+                                        checkpoint=lambda state: save_state(args.state, state)))
         time.sleep(int(config.get("poll_seconds", 15)))
 
 

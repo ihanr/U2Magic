@@ -1,6 +1,8 @@
 from dataclasses import replace
 
 from limiter import Config, LimiterState, TorrentSample, decide, restore_limit
+from qb_api import QbClient
+from urllib.error import HTTPError
 
 
 MIB = 1024 * 1024
@@ -62,3 +64,20 @@ def test_finite_original_limit_remains_when_lower_than_budget_limit():
 def test_release_restores_only_owned_original_limit():
     state = LimiterState(0, 0, 0, 1800, 20 * MIB, True)
     assert restore_limit(state) == 20 * MIB
+
+
+def test_mutating_qb_request_relogs_once_after_403_then_retries():
+    client = QbClient({"host": "http://qb.example", "username": "user", "password": "secret"})
+    responses = [HTTPError("http://qb.example", 403, "Forbidden", None, None), b"Ok."]
+    calls = []
+    def open_once(path, data=None):
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+    client._open = open_once
+    client.login = lambda: calls.append("login")
+
+    client.set_upload_limit("a", 123)
+
+    assert calls == ["login"]
