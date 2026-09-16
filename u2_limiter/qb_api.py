@@ -1,5 +1,6 @@
 import http.cookiejar
 import json
+from urllib.error import HTTPError
 from urllib.parse import urlencode, urlparse
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
@@ -22,21 +23,26 @@ class QbClient:
     def properties_path(torrent_hash):
         return "/api/v2/torrents/properties?" + urlencode({"hash": torrent_hash})
 
-    def _request(self, path, data=None):
+    def _open(self, path, data=None):
         request = Request(self.base + path, data=data)
         with self.opener.open(request, timeout=10) as response:
             return response.read()
 
+    def _request(self, path, data=None, retry_auth=True):
+        try:
+            return self._open(path, data)
+        except HTTPError as error:
+            if not retry_auth or error.code not in (401, 403):
+                raise
+            self.login()
+            return self._request(path, data, retry_auth=False)
+
     def login(self):
         body = urlencode({"username": self.node["username"], "password": self.node["password"]}).encode()
-        self._request("/api/v2/auth/login", body)
+        self._request("/api/v2/auth/login", body, retry_auth=False)
 
     def list_u2_torrents(self):
-        try:
-            rows = json.loads(self._request(self.info_path()))
-        except Exception:
-            self.login()
-            rows = json.loads(self._request(self.info_path()))
+        rows = json.loads(self._request(self.info_path()))
         return [row for row in rows if row.get("category") == "U2"]
 
     def set_upload_limit(self, torrent_hash, limit_bps):

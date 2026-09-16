@@ -18,7 +18,14 @@ tracker hosts, and `reannounce` values, then add only those U2 hosts to
 `burst_mib_per_sec: 100` is the per-torrent front-loaded cap: calculated
 early-cycle limits can reach 100 MiB/s, then fall as the cycle budget is used.
 Until a complete announce cycle has been observed, or if a qB
-properties request fails, the torrent stays at 45 MiB/s.
+properties request fails, the limiter leaves that torrent's current limit
+unchanged for that poll.
+
+When the calculated dynamic cap is below the limiter's original qB limit, the
+sidecar adds `U2LimitHoldUntil-<unix-seconds>` before lowering the limit. The
+tag expires after five minutes unless refreshed by a successful later poll;
+this allows external cleanup rules to distinguish a limiter hold from an
+ordinary low-upload torrent without creating permanent protection.
 
 Only after reviewing dry-run output, explicitly replace `--dry-run` with
 `--write` in the Compose command and start it again.
